@@ -1,5 +1,17 @@
 # Segder
 Sistema de versionado para el proyecto de Segder
+## Instrucciones Git
+A priori vamos a trabajar en una sola rama. Si es necesario, trabajaremos con mas
+
+**_!!Primera vez clonar el repositorio para que se monte el upstream!!_**
+
+**Al comenzar el trabajo:**
+- git pull
+
+**Al acabar**
+- git add * _(o los cambios que quieras agregar)_
+- git commit -m "Titulo" -m "Eplicacion"
+- git push
 
 ## Parte 1
 <img width="440" alt="image" src="https://github.com/user-attachments/assets/f28b7f43-7633-44b2-a98a-d7ded6feb787">
