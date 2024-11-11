@@ -13,11 +13,11 @@ A priori vamos a trabajar en una sola rama. Si es necesario, trabajaremos con ma
 - git commit -m "Titulo" -m "Eplicacion"
 - git push
 
-** Como trabajar con ramas **
+**Como trabajar con ramas**
 * Mirar ramas: git branch
 * Ir a una rama: git checkout [nombre de rama]
 
-** Como hacer merges **
+**Como hacer merges**
 1. Hacer un commit en tu rama 
 2. Cambiar a main  (git checkout main)
 3. Hacer un pull 
