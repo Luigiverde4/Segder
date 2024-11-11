@@ -13,6 +13,20 @@ A priori vamos a trabajar en una sola rama. Si es necesario, trabajaremos con ma
 - git commit -m "Titulo" -m "Eplicacion"
 - git push
 
+** Como trabajar con ramas **
+* Mirar ramas: git branch
+* Ir a una rama: git checkout [nombre de rama]
+
+** Como hacer merges **
+1. Hacer un commit en tu rama 
+2. Cambiar a main  (git checkout main)
+3. Hacer un pull 
+4. git merge [nombre de tu rama]
+5. Resolver los conflictos para juntar el código correctamente
+
+** Otras cosas **
+1. Mirar cambios: git status (-s)
+
 ## Parte 1
 <img width="440" alt="image" src="https://github.com/user-attachments/assets/f28b7f43-7633-44b2-a98a-d7ded6feb787">
 
@@ -68,7 +82,6 @@ Python.
 * **Presentación oral pública** del funcionamiento del trabajo desarrollado. _(pedir antes del 8 de enero)_
 
 ## Evaluación
-
 *  Si se completa con éxito solo la parte I, la calificación máxima que puede alcanzarse es de
 0,75 puntos.
 * Si se completan con éxito las partes I y II, la calificación máxima que puede alcanzarse es de
