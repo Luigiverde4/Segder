@@ -31,10 +31,9 @@ Cuando se trate de imágenes, el servidor de contenidos incluirá en la imagen e
 marca de agua visible cuyo contenido dependerá del usuario al que le esté enviando la
 información y que sirva para identificarlo.
   </ol>
-<ol>
-  El mensaje de solicitud de la clave de cifrado deberá estar firmado digitalmente por la
-aplicación.
-</ol>
+  <ol>
+    2. El mensaje de solicitud de la clave de cifrado deberá estar firmado digitalmente por la aplicación.
+  </ol>
 </li>
 
 ## Parte 3
@@ -78,4 +77,3 @@ Python.
 de 1,5 puntos.
 * En el caso de que haya realizado las partes I, II y III, puede optar a la máxima calificación (2
 puntos) presentando de manera oral el trabajo.
-
