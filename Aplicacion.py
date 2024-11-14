@@ -1,95 +1,110 @@
 from socket import *
 import os
 
-def gestionaInputs()->bool:
-    """Gestiona el imput del usuario
-    Args:
-        None
-    Returns:
-        bool -> Si se espera algo del servidor o no
-    """
-    # Mostrar los comandos disponibles alineados
+def gestionaInputs() -> bool:
+    """Gestiona el input del usuario y valida los comandos."""
+    if not mensaje_tx.strip():
+        print("No ha ingresado ningún comando. Por favor, intente nuevamente.")
+        return False
+
     if mensaje_tx.startswith("INFO"):
         print("\nComandos disponibles:")
         for instruccion in comandos:
             print(f"{instruccion.ljust(max_len)} - {comandos[instruccion]}")
         return False
-    # Verificar el comando
+
     elif mensaje_tx.split()[0] not in [comando.split()[0] for comando in comandos]: 
-        # Si el comando no existe, se avisa
-        print("Comando erroneo")
+        print("Comando erróneo")
         return False
 
-    # Terminar el programa
+    elif mensaje_tx.startswith("DESCARGAR"):
+        partes = mensaje_tx.split()
+        if len(partes) < 2:
+            print("Error: Debe especificar el nombre del archivo después de 'DESCARGAR'.")
+            return False
+        else:
+            s.send(mensaje_tx.encode())
+            return True
+
     elif mensaje_tx.startswith("FIN"):
-        s.send(mensaje_tx.encode())  # Enviar mensaje de cierre al servidor
+        s.send(mensaje_tx.encode())
         s.close() 
         exit()
 
-    # Limpiar la consola 
     elif mensaje_tx.startswith("CLS"):
-        os.system("cls")
+        os.system("cls" if os.name == "nt" else "clear")
         print("Introduzca INFO para obtener información sobre los comandos que puedes enviar")
         return False
 
-    # Enviar mensaje
     else:
-        s.send(mensaje_tx.encode())  # Enviar
+        s.send(mensaje_tx.encode())
         return True
+
     
-def ver(mensaje_rx: bytes)->None:
-    """Muestra por pantalla los contenidos disponibles del servidor
-    Args:
-        mensaje_rx (bytes): Mensaje recibido del servidor en bytes
-    Return:
-        None
-    """
-    # Creamos una lista partiendo cada \n
+def ver(mensaje_rx: bytes) -> None:
+    """Muestra por pantalla los contenidos disponibles del servidor."""
     lista_contenidos = mensaje_rx.decode().split("\n")
-    print(lista_contenidos)  
+    for contenido in lista_contenidos:
+        print(contenido)
 
-def descarga(mensaje_tx: str,mensaje_rx: bytes)->None:
-    """Funcion para descargar el archivo pedido al servidor
-    Args:
-        mensaje_tx (str): Mensaje mandado al server para coger el nombre del archivo
-        mensaje_rx (bytes): Mensaje recibido del servidor en bytes
-    Returns:
-        None
-    """
-    long = int(mensaje_rx[23:])
-    if mensaje_rx.decode().startswith("200"):
-        print("--------> Fichero recibido")
+def descarga(mensaje_tx: str, mensaje_rx: bytes) -> None:
+    """Función para descargar el archivo pedido al servidor."""
+    try:
+        mensaje_decodificado = mensaje_rx.decode()
+
+        if mensaje_decodificado.startswith("400"):
+            print("Error: El archivo solicitado no existe en el servidor.")
+            return
+
+        if not mensaje_decodificado.startswith("200"):
+            print("Error: El servidor no respondió con un mensaje válido para descarga.")
+            return
+
+        longitud = int(mensaje_decodificado.split(":")[1].strip())
+        print(f"Tamaño del archivo a descargar: {longitud} bytes")
+
         with open(f"contenido_descargado/{mensaje_tx.split()[1]}", "wb") as archivo:
-            cont_down = 0
-            while cont_down < long:
+            bytes_descargados = 0
+            while bytes_descargados < longitud:
                 data = s.recv(2048)
-                cont_down += len(data)
+                if not data:
+                    print("Error: No se recibieron más datos, la descarga puede estar incompleta.")
+                    break
                 archivo.write(data)
-    else:
-        print("Respuesta:", mensaje_rx)
-        print("--------> Fichero no encontrado")
+                bytes_descargados += len(data)
 
-def recibirRespuestas()->None:
-    """Funcion para tratar la respuesta del servidor
-    Args:
-        None
-    Returns:
-        None
-    """
-    mensaje_rx = s.recv(2048)  # Recibir
-    
-    # Si queriamos VER
-    if mensaje_tx.startswith("VER"):
-        ver(mensaje_rx)
+            if bytes_descargados >= longitud:
+                print("Descarga completa")
+            else:
+                print("Error: La descarga se interrumpió o fue incompleta.")
+    except ValueError as e:
+        print(f"Error al interpretar la longitud del contenido en la respuesta del servidor: {e}")
+    except FileNotFoundError as e:
+        print(f"Error al guardar el archivo descargado: {e}")
+    except Exception as e:
+        print(f"Ha ocurrido un error inesperado durante la descarga: {e}")
 
-    # Si queriamos DESCARGAR
-    elif mensaje_tx.startswith("DESCARGAR"):
-        descarga(mensaje_tx,mensaje_rx)
+def recibirRespuestas() -> None:
+    """Función para tratar la respuesta del servidor."""
+    try:
+        mensaje_rx = s.recv(2048)
+        if not mensaje_rx:
+            print("Error: No se recibió respuesta del servidor.")
+            return
 
-# Datos conexion
-dir_IP_servidor= '127.0.0.1'
+        if mensaje_tx.startswith("VER"):
+            ver(mensaje_rx)
+
+        elif mensaje_tx.startswith("DESCARGAR"):
+            descarga(mensaje_tx, mensaje_rx)
+
+    except Exception as e:
+        print(f"Ha ocurrido un error al recibir la respuesta del servidor: {e}")
+
+# Datos de conexión
+dir_IP_servidor = '127.0.0.1'
 puerto_servidor = 6000
-dir_socket_servidor =(dir_IP_servidor, puerto_servidor)
+dir_socket_servidor = (dir_IP_servidor, puerto_servidor)
 
 # Socket
 s = socket(AF_INET, SOCK_STREAM)
@@ -99,16 +114,15 @@ s.connect(dir_socket_servidor)
 comandos = {
     "VER": "Sirve para obtener los contenidos disponibles en el servidor",
     "DESCARGAR {nombre del archivo}": "Envía una solicitud de descarga del fichero especificado al servidor",
-    "VER": "Ver los contenidos disponibles",
     "FIN": "Cierra la aplicación",
     "CLS": "Limpiar la consola"
 }
 
-max_len = max(len(comando) for comando in comandos) # Esto es para el formateo mas tarde
+max_len = max(len(comando) for comando in comandos)
 
 print("Introduzca INFO para obtener información sobre los comandos que puedes enviar")
 
 while True:
     mensaje_tx = input("\nIntroduzca su comando : ")
-    if gestionaInputs(): # Si esperamos algo del servidor
+    if gestionaInputs():  # Si esperamos algo del servidor
         recibirRespuestas()
