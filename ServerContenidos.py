@@ -6,7 +6,12 @@ import os
 from datetime import datetime
 
 def iniciar_log() -> None:
-    """Escribe un mensaje de inicio en el log al iniciar el servidor anadiendo una linea en blanco si ya existe el archivo."""
+    """Escribe un mensaje de inicio en el log al iniciar el servidor anadiendo una linea en blanco si ya existe el archivo.
+    Args:
+        None
+    Returns:
+        None
+    """
     try:
         archivo_existe = os.path.exists("log.txt")
         
@@ -20,7 +25,12 @@ def iniciar_log() -> None:
         s1.send("400 Archivo no encontrado\n".encode()) 
 
 def log(msj: str) -> None:
-    """Guarda un log con el tiempo y el mensaje en un archivo de texto."""
+    """Guarda un log con el tiempo y el mensaje en un archivo de texto.
+    Args:
+        msj (str): Mensaje a guardar en el log
+    Returns:
+        None
+    """
     try:
         with open("logs/log.txt", "a") as log_file:
             log_entry = f"{datetime.now().strftime('%H:%M:%S')} - {msj}\n"
@@ -38,13 +48,22 @@ except Exception as e:
 
 
 def ver() -> None:
-    """Envía al cliente los contenidos disponibles en el servidor."""
+    """Envía al cliente los contenidos disponibles en el servidor.
+    Args:
+        None
+    Returns:
+        None
+    """
     archivos = os.listdir("contenido")
     archivos_str = "\n".join(archivos) if archivos else "No hay contenido\n"
     s1.send(archivos_str.encode())
 
 def get(mensaje_rx: str) -> None:
-    """Procesa la solicitud de descarga de un archivo."""
+    """Procesa la solicitud de descarga de un archivo.
+    Args:
+        mensaje_rx (str)
+    
+    """
     nombre = mensaje_rx.split()[1]  # Extrae el nombre del archivo
     ruta = f"contenido/{nombre}"
 
@@ -111,3 +130,5 @@ while True:
     except Exception as e:
         log(f"Error en el servidor: {str(e)}")
         s1.send("ERROR EN EL SERVIDOR".encode())
+
+log(f"Servidor cerrado")

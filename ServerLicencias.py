@@ -7,31 +7,27 @@ ruta_json = 'licencias.json'
 # Ruta a la carpeta 'contenido' donde están guardados los archivos
 ruta_contenido = 'contenido'
 
-def leer_json(ruta):
-    """
-    Servidor Licencias
+def leer_json(ruta)->dict:
+    """Abre el archivo JSON, lo lee y lo carga en un diccionario
     
-    Abre el archivo JSON, lo lee y lo carga en un diccionario
+    Args:
+        ruta (str): La ruta del archivo
     
-    Parametros:
-    ruta (str): La ruta del archivo
-    
-    Retorna:
-    dict: El contenido del archivo JSON como un diccionario
+    Returns:
+        dict: El contenido del archivo JSON como un diccionario
     """
     with open(ruta, 'r') as file:
         return json.load(file)
 
-def verificar_archivos(json_data, carpeta):
-    """
-    Servidor Licencias
-    
-    Recorre el archivo JSON y comprueba que exista el archivo y te dice si es es encriptable
+def verificar_archivos(json_data, carpeta)->None:
+    """Recorre el archivo JSON y comprueba que exista el archivo y te dice si es es encriptable
     #cuando tengamos mas cosas hechas podemos enlazarlo bien
     
-    Parametros:
-    json_data (dict): El diccionario que contiene la información de los archivos
-    carpeta (str): La ruta de la carpeta donde se encuentran los archivos
+    Args:
+        json_data (dict): El diccionario que contiene la información de los archivos
+        carpeta (str): La ruta de la carpeta donde se encuentran los archivos
+    Returns:
+        None
     """
     archivos_en_carpeta = os.listdir(carpeta)
     
