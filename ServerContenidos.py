@@ -14,7 +14,7 @@ def log(msj: str)-> None:
         None
     """
     print(f"{datetime.now().strftime('%H:%M:%S')} - {msj}")
-    
+
 # Datos conexion
 dir_IP_server = "127.0.0.1"
 puerto_server = 6000
@@ -34,24 +34,27 @@ try:
     # Bucle infinito que corre el servidor
     while True:
         # Recibir peticion
-        mensaje_rx= s1.recv(2048)
-        log(f"Mensaje RX {mensaje_rx.decode()}")
+        mensaje_rx= s1.recv(2048).decode()
+        log(f"Mensaje RX {mensaje_rx}")
 
         # Verificar comando
         if mensaje_rx.split()[0] not in [comando.split()[0] for comando in comandos]: # Si no se hace asi, descargar no va
             s1.send("Comando no reconocido".encode())
         
         # Terminar el programa
-        elif (mensaje_rx.decode() == "FIN"):# Fin de la comunicacion con el cliente
+        elif (mensaje_rx == "FIN"):# Fin de la comunicacion con el cliente
             s.close()
             break
         
         # Manejar el comando
         else:
-            s1.send("Comando recibido".encode())
+            if mensaje_rx == "VER":
+                archivos = os.listdir("contenido")
+                archivos_str = "\n".join(archivos)
+                s1.send(archivos_str.encode())
 
 except Exception as e:
-    # Capturar errores específicos y enviar un mensaje de error
+    # Capturar errores especificos y enviar un mensaje de error
     log(f"Error en el servidor: {str(e)}")
     s1.send("ERROR EN EL SERVIDOR".encode())
 

@@ -13,6 +13,7 @@ s.connect(dir_socket_servidor)
 comandos = {
     "VER": "Sirve para obtener los contenidos disponibles en el servidor",
     "DESCARGAR {nombre del archivo}": "Envía una solicitud de descarga del fichero especificado al servidor",
+    "VER": "Ver los contenidos disponibles",
     "FIN": "Cierra la aplicación",
     "CLS": "Limpiar la consola"
 }
@@ -24,6 +25,9 @@ print("Introduzca INFO para obtener información sobre los comandos que puedes e
 while True:
     mensaje_tx = input("\nIntroduzca su comando : ").upper()
     
+
+    # Lidiar con el envio
+
     # Mostrar los comandos disponibles alineados
     if mensaje_tx == "INFO":
         print("\nComandos disponibles:")
@@ -46,8 +50,17 @@ while True:
         os.system("cls")
         print("Introduzca INFO para obtener información sobre los comandos que puedes enviar")
 
-    # Enviar y recibir mensajes
+    # Enviar mensaje
     else:
         s.send(mensaje_tx.encode())  # Enviar
-        mensaje_rx = s.recv(2048)  # Recibir
-        print(mensaje_rx.decode())  # Mostrar la respuesta en consola / Analziar a futuro
+    
+
+    # Lidiar con la respuesta
+    mensaje_rx = s.recv(2048).decode()  # Recibir
+    if mensaje_tx == "VER":
+        # Creamos una lista partiendo cada \n y la printeamos
+        lista_contenidos = mensaje_rx.split("\n")
+        print(lista_contenidos)    
+    elif mensaje_tx == "DESCARGAR":
+        # TODO hacer que descargue y cree el archivo al descargarlo
+        pass
