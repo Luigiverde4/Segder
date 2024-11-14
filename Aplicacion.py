@@ -48,7 +48,7 @@ def ver(mensaje_rx: bytes)->None:
     lista_contenidos = mensaje_rx.decode().split("\n")
     print(lista_contenidos)  
 
-def descarga(mensaje_tx: str,mensaje_rx: str)->None:
+def descarga(mensaje_tx: str,mensaje_rx: bytes)->None:
     """Funcion para descargar el archivo pedido al servidor
     Args:
         mensaje_tx (str): Mensaje mandado al server para coger el nombre del archivo
