@@ -10,19 +10,19 @@ def iniciar_log() -> None:
     try:
         archivo_existe = os.path.exists("log.txt")
         
-        with open("log.txt", "a") as log_file:
+        with open("logs/log.txt", "a") as log_file:
             if archivo_existe:
                 log_file.write("\n")  # Anade una linea en blanco solo si el archivo ya existe
             log_file.write(f"{datetime.now().strftime('%H:%M:%S')} - El servidor ha sido iniciado\n")
     
-    except FileNotFoundError:
-        print("ERROR: El archivo log.txt no existe y no se puede acceder.")
-        raise  
+    except FileNotFoundError as e:
+        log(f"{str(e)}")  # Loguea el error si no se encuentra el archivo
+        s1.send("400 Archivo no encontrado\n".encode()) 
 
 def log(msj: str) -> None:
     """Guarda un log con el tiempo y el mensaje en un archivo de texto."""
     try:
-        with open("log.txt", "a") as log_file:
+        with open("logs/log.txt", "a") as log_file:
             log_entry = f"{datetime.now().strftime('%H:%M:%S')} - {msj}\n"
             log_file.write(log_entry)
     
@@ -104,7 +104,7 @@ while True:
             # Comando DESCARGAR: enviar archivo solicitado
             elif mensaje_rx.startswith("DESCARGAR"):
                 get(mensaje_rx)
-
+    
     except FileNotFoundError:
         log("ERROR: Archivo no encontrado!")
         s1.send(b"ERROR: Archivo no encontrado")
