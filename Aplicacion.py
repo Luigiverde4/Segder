@@ -4,7 +4,7 @@ import os
 def gestionaInputs() -> bool:
     """Gestiona el input del usuario y valida los comandos."""
     if not mensaje_tx.strip():
-        print("No ha ingresado ningún comando. Por favor, intente nuevamente.")
+        print("No has ingresado ningun comando, intenta otra vez.")
         return False
 
     if mensaje_tx.startswith("INFO"):
@@ -20,7 +20,7 @@ def gestionaInputs() -> bool:
     elif mensaje_tx.startswith("DESCARGAR"):
         partes = mensaje_tx.split()
         if len(partes) < 2:
-            print("Error: Debe especificar el nombre del archivo después de 'DESCARGAR'.")
+            print("Error: Debes especificar el nombre del archivo despues de 'DESCARGAR'.")
             return False
         else:
             s.send(mensaje_tx.encode())
@@ -33,7 +33,7 @@ def gestionaInputs() -> bool:
 
     elif mensaje_tx.startswith("CLS"):
         os.system("cls" if os.name == "nt" else "clear")
-        print("Introduzca INFO para obtener información sobre los comandos que puedes enviar")
+        print("Introduce INFO para obtener informacion sobre los comandos que puedes enviar")
         return False
 
     else:
@@ -48,7 +48,7 @@ def ver(mensaje_rx: bytes) -> None:
         print(contenido)
 
 def descarga(mensaje_tx: str, mensaje_rx: bytes) -> None:
-    """Función para descargar el archivo pedido al servidor."""
+    """Funcion para descargar el archivo pedido al servidor."""
     try:
         mensaje_decodificado = mensaje_rx.decode()
 
@@ -85,7 +85,7 @@ def descarga(mensaje_tx: str, mensaje_rx: bytes) -> None:
         print(f"Ha ocurrido un error inesperado durante la descarga: {e}")
 
 def recibirRespuestas() -> None:
-    """Función para tratar la respuesta del servidor."""
+    """Funcion para tratar la respuesta del servidor."""
     try:
         mensaje_rx = s.recv(2048)
         if not mensaje_rx:
@@ -101,7 +101,7 @@ def recibirRespuestas() -> None:
     except Exception as e:
         print(f"Ha ocurrido un error al recibir la respuesta del servidor: {e}")
 
-# Datos de conexión
+# Datos de conexion
 dir_IP_servidor = '127.0.0.1'
 puerto_servidor = 6000
 dir_socket_servidor = (dir_IP_servidor, puerto_servidor)
@@ -113,14 +113,14 @@ s.connect(dir_socket_servidor)
 # Variables globales
 comandos = {
     "VER": "Sirve para obtener los contenidos disponibles en el servidor",
-    "DESCARGAR {nombre del archivo}": "Envía una solicitud de descarga del fichero especificado al servidor",
-    "FIN": "Cierra la aplicación",
+    "DESCARGAR {nombre del archivo}": "Envia una solicitud de descarga del fichero especificado al servidor",
+    "FIN": "Cierra la aplicacion",
     "CLS": "Limpiar la consola"
 }
 
 max_len = max(len(comando) for comando in comandos)
 
-print("Introduzca INFO para obtener información sobre los comandos que puedes enviar")
+print("Introduzca INFO para obtener informacion sobre los comandos que puedes enviar")
 
 while True:
     mensaje_tx = input("\nIntroduzca su comando : ")

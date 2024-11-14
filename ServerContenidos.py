@@ -5,9 +5,37 @@ from socket import *
 import os
 from datetime import datetime
 
+def iniciar_log() -> None:
+    """Escribe un mensaje de inicio en el log al iniciar el servidor anadiendo una linea en blanco si ya existe el archivo."""
+    try:
+        archivo_existe = os.path.exists("log.txt")
+        
+        with open("log.txt", "a") as log_file:
+            if archivo_existe:
+                log_file.write("\n")  # Anade una linea en blanco solo si el archivo ya existe
+            log_file.write(f"{datetime.now().strftime('%H:%M:%S')} - El servidor ha sido iniciado\n")
+    
+    except FileNotFoundError:
+        print("ERROR: El archivo log.txt no existe y no se puede acceder.")
+        raise  
+
 def log(msj: str) -> None:
-    """Printea y guarda un log con el tiempo y el mensaje a logear."""
-    print(f"{datetime.now().strftime('%H:%M:%S')} - {msj}")
+    """Guarda un log con el tiempo y el mensaje en un archivo de texto."""
+    try:
+        with open("log.txt", "a") as log_file:
+            log_entry = f"{datetime.now().strftime('%H:%M:%S')} - {msj}\n"
+            log_file.write(log_entry)
+    
+    except FileNotFoundError:
+        print("ERROR: El archivo log.txt no existe y no se puede acceder.")
+        raise  
+
+# Llamamos a iniciar_log al arrancar el servidor para crearlo si o si
+try:
+    iniciar_log()
+except Exception as e:
+    print(f"Error al iniciar el log: {str(e)}")
+
 
 def ver() -> None:
     """Envía al cliente los contenidos disponibles en el servidor."""
@@ -20,22 +48,22 @@ def get(mensaje_rx: str) -> None:
     nombre = mensaje_rx.split()[1]  # Extrae el nombre del archivo
     ruta = f"contenido/{nombre}"
 
-    # Verificar si el archivo existe
+    # Verifica si el archivo existe
     if not os.path.exists(ruta):
         log(f"Archivo no encontrado: {nombre}")
         s1.send("400 Archivo no encontrado\n".encode())
         return
 
-    # Enviar el archivo al cliente
+    # Envia el archivo al cliente
     with open(ruta, 'rb') as archivo:
         contenido = archivo.read()
-        longitud = os.stat(ruta).st_size  # Obtener tamaño del archivo
+        longitud = os.stat(ruta).st_size  # Obtiene tamaño del archivo
         msg = f"200 Longitud Contenido:{longitud}\n"
         s1.send(msg.encode())
         s1.sendall(contenido)
         log(f"Archivo enviado: {nombre} ({longitud} bytes)")
 
-# Configuración de conexión
+# Configuracion de conexion
 dir_IP_server = "127.0.0.1"
 puerto_server = 6000
 dir_socket_server = (dir_IP_server, puerto_server)
@@ -45,7 +73,7 @@ s = socket(AF_INET, SOCK_STREAM)
 s.bind(dir_socket_server)
 s.listen()
 s1, addr = s.accept()
-log(f"Conexión aceptada desde {addr[0]}")
+log(f"Conexion aceptada desde {addr[0]}")
 
 # Comandos disponibles
 comandos = ["VER", "DESCARGAR", "FIN"]
@@ -53,7 +81,7 @@ comandos = ["VER", "DESCARGAR", "FIN"]
 # Bucle principal del servidor
 while True:
     try:
-        # Recibir petición del cliente
+        # Recibir peticion del cliente
         mensaje_rx = s1.recv(2048).decode()
         log(f"Mensaje recibido: {mensaje_rx}")
 
@@ -62,11 +90,11 @@ while True:
             s1.send("Comando no reconocido".encode())
 
         else:
-            # Comando FIN: cerrar la conexión
+            # Comando FIN: cerrar la conexion
             if mensaje_rx.startswith("FIN"):
-                s1.send("Cerrando conexión".encode())
+                s1.send("Cerrando conexion".encode())
                 s1.close()
-                log("Conexión cerrada por el cliente")
+                log("Conexion cerrada por el cliente")
                 break
 
             # Comando VER: listar contenidos disponibles
