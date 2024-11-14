@@ -6,8 +6,7 @@ import os
 from datetime import datetime
 
 def log(msj: str)-> None:
-    """
-    Printea y guarda un log con el tiempo y el mensaje a logear
+    """Printea y guarda un log con el tiempo y el mensaje a logear
     Args:
         msj (str): El mensaje a logear
     Returns:
@@ -16,8 +15,7 @@ def log(msj: str)-> None:
     print(f"{datetime.now().strftime('%H:%M:%S')} - {msj}")
 
 def ver()->None:
-    """
-    Mira y envia si hay contenidos
+    """Mira y envia si hay contenidos
     Args:
         None
     Returns:
@@ -32,8 +30,7 @@ def ver()->None:
     s1.send(archivos_str.encode())
 
 def get(mensaje_rx:str)->None:
-    """
-    Coge y manda un archivo
+    """Coge y manda un archivo
     Args:
         nombre (str): Nombre del archivo a mandar
     Returns:
@@ -101,8 +98,8 @@ while True:
     except FileNotFoundError:
         log(f"ERROR: Archivo no encontrado!")
         s1.send(b"ERROR: Archivo no encontrado") 
-    # # Cerrar el socket
-    # finally:
-    #     if s1:
-    #         s1.close()
-    #     log(f"Servidor cerrado")
+    # Cerrar el socket
+    finally:
+        if s1:
+            s1.close()
+        log(f"Servidor cerrado")

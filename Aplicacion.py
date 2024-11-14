@@ -1,7 +1,61 @@
 from socket import *
 import os
 
-def descarga(mensaje_tx: str)->None:
+def gestionaInputs()->bool:
+    """Gestiona el imput del usuario
+    Args:
+        None
+    Returns:
+        bool -> Si se espera algo del servidor o no
+    """
+    # Mostrar los comandos disponibles alineados
+    if mensaje_tx.startswith("INFO"):
+        print("\nComandos disponibles:")
+        for instruccion in comandos:
+            print(f"{instruccion.ljust(max_len)} - {comandos[instruccion]}")
+        return False
+    # Verificar el comando
+    elif mensaje_tx.split()[0] not in [comando.split()[0] for comando in comandos]: 
+        # Si el comando no existe, se avisa
+        print("Comando erroneo")
+        return False
+
+    # Terminar el programa
+    elif mensaje_tx.startswith("FIN"):
+        s.send(mensaje_tx.encode())  # Enviar mensaje de cierre al servidor
+        s.close() 
+        exit()
+
+    # Limpiar la consola 
+    elif mensaje_tx.startswith("CLS"):
+        os.system("cls")
+        print("Introduzca INFO para obtener información sobre los comandos que puedes enviar")
+        return False
+
+    # Enviar mensaje
+    else:
+        s.send(mensaje_tx.encode())  # Enviar
+        return True
+    
+def ver(mensaje_rx: bytes)->None:
+    """Muestra por pantalla los contenidos disponibles del servidor
+    Args:
+        mensaje_rx (bytes): Mensaje recibido del servidor en bytes
+    Return:
+        None
+    """
+    # Creamos una lista partiendo cada \n
+    lista_contenidos = mensaje_rx.decode().split("\n")
+    print(lista_contenidos)  
+
+def descarga(mensaje_tx: str,mensaje_rx: str)->None:
+    """Funcion para descargar el archivo pedido al servidor
+    Args:
+        mensaje_tx (str): Mensaje mandado al server para coger el nombre del archivo
+        mensaje_rx (bytes): Mensaje recibido del servidor en bytes
+    Returns:
+        None
+    """
     long = int(mensaje_rx[23:])
     if mensaje_rx.decode().startswith("200"):
         print("--------> Fichero recibido")
@@ -15,10 +69,22 @@ def descarga(mensaje_tx: str)->None:
         print("Respuesta:", mensaje_rx)
         print("--------> Fichero no encontrado")
 
-def ver():
-    # Creamos una lista partiendo cada \n
-    lista_contenidos = mensaje_rx.decode().split("\n")
-    print(lista_contenidos)  
+def recibirRespuestas()->None:
+    """Funcion para tratar la respuesta del servidor
+    Args:
+        None
+    Returns:
+        None
+    """
+    mensaje_rx = s.recv(2048)  # Recibir
+    
+    # Si queriamos VER
+    if mensaje_tx.startswith("VER"):
+        ver(mensaje_rx)
+
+    # Si queriamos DESCARGAR
+    elif mensaje_tx.startswith("DESCARGAR"):
+        descarga(mensaje_tx,mensaje_rx)
 
 # Datos conexion
 dir_IP_servidor= '127.0.0.1'
@@ -44,41 +110,5 @@ print("Introduzca INFO para obtener información sobre los comandos que puedes e
 
 while True:
     mensaje_tx = input("\nIntroduzca su comando : ")
-
-    # Lidiar con el envio
-    # Mostrar los comandos disponibles alineados
-    if mensaje_tx.startswith("INFO"):
-        print("\nComandos disponibles:")
-        for instruccion in comandos:
-            print(f"{instruccion.ljust(max_len)} - {comandos[instruccion]}")
-
-    # Verificar el comando
-    elif mensaje_tx.split()[0] not in [comando.split()[0] for comando in comandos]: 
-        # Si el comando no existe, se avisa
-        print("Comando erroneo")
-        continue
-
-    # Terminar el programa
-    elif mensaje_tx.startswith("FIN"):
-        s.send(mensaje_tx.encode())  # Enviar mensaje de cierre al servidor
-        s.close() 
-        continue  
-
-    # Limpiar la consola 
-    elif mensaje_tx.startswith("CLS"):
-        os.system("cls")
-        print("Introduzca INFO para obtener información sobre los comandos que puedes enviar")
-        continue
-
-    # Enviar mensaje
-    else:
-        s.send(mensaje_tx.encode())  # Enviar
-    
-
-    # Lidiar con la respuesta
-    mensaje_rx = s.recv(2048)  # Recibir
-    if mensaje_tx.startswith("VER"):
-        ver()
-
-    elif mensaje_tx.startswith("DESCARGAR"):
-        descarga(mensaje_tx)
+    if gestionaInputs(): # Si esperamos algo del servidor
+        recibirRespuestas()
