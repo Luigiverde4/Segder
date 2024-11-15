@@ -3,6 +3,7 @@ Servidor Contenidos
 """
 from socket import *
 from datetime import datetime
+from threading import Thread
 import select
 import os
 
@@ -60,6 +61,7 @@ def ver(cliente: socket) -> None:
     archivos = os.listdir("contenido")
     archivos_str = "\n".join(archivos) if archivos else "No hay contenido\n"
     cliente.send(archivos_str.encode())
+    log(f"Ver enviado a {clientes[cliente]}")
 
 def get(cliente: socket, mensaje_rx: str) -> None:
     """Procesa la solicitud de descarga de un archivo.
@@ -83,7 +85,7 @@ def get(cliente: socket, mensaje_rx: str) -> None:
         msg = f"200 Longitud Contenido:{longitud}\n"
         cliente.send(msg.encode())
         cliente.sendall(contenido)
-        log(f"Archivo enviado: {nombre} ({longitud} bytes)")
+        log(f"Archivo enviado: {nombre} ({longitud} bytes) a {clientes[cliente]}")
 
 # Configuracion de conexion
 dir_IP_server = "127.0.0.1"
@@ -95,62 +97,88 @@ s = socket(AF_INET, SOCK_STREAM)
 s.bind(dir_socket_server)
 s.listen()
 inputs = [s]
-
+clientes = {}
 # Comandos disponibles
 comandos = ["VER", "DESCARGAR", "FIN"]
 
+def serverInterface():
+    """Funcion de consola para controlar el servidor."""
+    while True:
+        consola = input()
+        if consola.startswith("exit"):
+            log("Servidor detenido por comando 'exit'")
+            s.close()  # Cierra el socket principal
+            break
+
 # Bucle principal del servidor
+def server():
+    while True:
+        try:
+            # Nuevas conexiones o mensajes entrantes
+            ready_to_read, _, _ = select.select(inputs, [], [])
 
-while True:
-    try:
-        # Nuevas conexiones o mensajes entrantes
-        ready_to_read, _, _ = select.select(inputs, [], [])
-
-        # Miramos cada socket listo para leer
-        for sock in ready_to_read:
-            if sock is s:
-                # Si el socket es nuevo
-                client_socket, addr = s.accept()
-                inputs.append(client_socket) 
-                log(f"Conexion aceptada desde {addr}")
-            else:
-                # Si el socket es de un cliente existente, recibimos el mensaje
-                mensaje_rx = sock.recv(2048).decode()
-
-                if mensaje_rx:
-                    # Logueamos el mensaje recibido
-                    log(f"Mensaje recibido de cliente: {mensaje_rx}")
-
-                    # Verificamos si el comando recibido es válido
-                    if mensaje_rx.split()[0] not in comandos:
-                        # Comando no reconocido
-                        sock.send("Comando no reconocido\n".encode())
-                    
-                    elif mensaje_rx.startswith("FIN"):
-                        # Comando FIN: cerrar la conexion
-                        sock.send("Cerrando conexion\n".encode())
-                        sock.close()
-                        inputs.remove(sock)  # Quitamos el socket cerrado de la lista de entradas
-                        log("Conexion cerrada por el cliente")
-                    
-                    elif mensaje_rx.startswith("VER"):
-                        # Comando VER: listar contenidos disponibles
-                        ver(sock)
-                    
-                    elif mensaje_rx.startswith("DESCARGAR"):
-                        # Comando DESCARGAR: enviar archivo solicitado
-                        get(sock, mensaje_rx)
+            # Miramos cada socket listo para leer
+            for sock in ready_to_read:
+                if sock is s:
+                    # Si el socket es nuevo
+                    client_socket, addr = s.accept()
+                    inputs.append(client_socket) 
+                    clientes[client_socket] = addr 
+                    log(f"Conexion aceptada desde {addr}")
                 else:
-                    # Si no hay mensaje, el cliente cerró la conexión
-                    sock.close()
-                    inputs.remove(sock)  # Eliminamos el socket del cliente
-                    log("Cliente desconectado")
-                    
-    except FileNotFoundError:
-        # Error al intentar acceder a un archivo inexistente
-        log("ERROR: Archivo no encontrado!")
-        sock.send("ERROR archivo no encontrado")
-    except Exception as e:
-        # Cualquier otro error en el servidor se loguea
-        log(f"Error en el servidor: {str(e)}")
-        sock.send("ERROR en el servidor")
+                    # Si el socket es de un cliente existente, recibimos el mensaje
+                    mensaje_rx = sock.recv(2048).decode()
+
+                    if mensaje_rx:
+                        # Logueamos el mensaje recibido
+                        log(f"Mensaje recibido de cliente {clientes[sock]} : {mensaje_rx}")
+
+                        # Verificamos si el comando recibido es válido
+                        if mensaje_rx.split()[0] not in comandos:
+                            # Comando no reconocido
+                            sock.send(f"Comando no reconocido de {clientes[sock]}\n".encode())
+                        
+                        elif mensaje_rx.startswith("FIN"):
+                            # FIN: cerrar la conexion
+                            sock.send("Cerrando conexion\n".encode())
+                            sock.close()
+                            inputs.remove(sock)  # Quitamos el socket cerrado de la lista de entradas
+                            log(f"Conexion cerrada por el cliente {clientes[sock]}")
+                        
+                        elif mensaje_rx.startswith("VER"):
+                            # VER: listar contenidos disponibles
+                            ver(sock)
+                        
+                        elif mensaje_rx.startswith("DESCARGAR"):
+                            # DESCARGAR: enviar archivo solicitado
+                            get(sock, mensaje_rx)
+                    else:
+                        # Si no hay mensaje, el cliente cerró la conexión
+                        log(f"Cliente {clientes[sock]} desconectado")  
+                        sock.close()
+                        inputs.remove(sock)  # Eliminamos el socket del cliente
+                        del clientes[sock]  # Eliminamos la info del cliente
+                        
+        except FileNotFoundError:
+            # Error al intentar acceder a un archivo inexistente
+            log("ERROR: Archivo no encontrado!")
+            sock.send("ERROR archivo no encontrado")
+        except Exception as e:
+            # Cualquier otro error en el servidor se loguea
+            log(f"Error en el servidor: {str(e)}")
+            sock.send("ERROR en el servidor")
+
+
+# Hilos
+hilo_server = Thread(target=server)
+hilo_serverInterface = Thread(target=serverInterface)
+
+
+hilo_server.start()
+hilo_serverInterface.start()
+# Esperamos a que ambos hilos terminen
+hilo_serverInterface.join()
+hilo_serverInterface.join()
+
+
+
