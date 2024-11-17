@@ -1,8 +1,13 @@
 from socket import *
 import os
 
-def gestionaInputs() -> bool:
-    """Gestiona el input del usuario y valida los comandos."""
+def gestionaInputs(mensaje_tx:str) -> bool:
+    """Gestiona el input del usuario y valida los comandos.
+    Args:
+        mensaje_tx (str): Mensaje del usuario a manejar
+    Returns:
+        bool: Si esperamos respuesta del servidor
+    """
     if not mensaje_tx.strip():
         print("No has ingresado ningun comando, intenta otra vez.")
         return False
@@ -40,15 +45,25 @@ def gestionaInputs() -> bool:
         s.send(mensaje_tx.encode())
         return True
 
-    
 def ver(mensaje_rx: bytes) -> None:
-    """Muestra por pantalla los contenidos disponibles del servidor."""
+    """Muestra por pantalla los contenidos disponibles del servidor.
+    Args:
+        mensaje_rx (bytes): Contenido recibido del servidor en bytes
+    Returns:
+        None
+    """
     lista_contenidos = mensaje_rx.decode().split("\n")
     for contenido in lista_contenidos:
         print(contenido)
 
 def descarga(mensaje_tx: str, mensaje_rx: bytes) -> None:
-    """Funcion para descargar el archivo pedido al servidor."""
+    """Funcion para descargar el archivo pedido al servidor.
+    Args:
+        mensaje_tx (str): Contenido pedido al servidor
+        mensaje_rx (bytes): Mensaje del servidor con el codigo de estado y longitud si procede
+    Returns:
+        None
+    """
     try:
         mensaje_decodificado = mensaje_rx.decode()
 
@@ -124,5 +139,5 @@ print("Introduzca INFO para obtener informacion sobre los comandos que puedes en
 
 while True:
     mensaje_tx = input("\nIntroduzca su comando : ")
-    if gestionaInputs():  # Si esperamos algo del servidor
+    if gestionaInputs(mensaje_tx):  # Si esperamos algo del servidor
         recibirRespuestas()

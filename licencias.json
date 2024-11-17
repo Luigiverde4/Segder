@@ -2,15 +2,15 @@
     "archivos": [
       {
         "nombre": "skibidi.txt",
-        "encriptable": true
+        "encriptado": true
       },
       {
         "nombre": "sigma.bmp",
-        "encriptable": false
+        "encriptado": false
       },
       {
         "nombre": "drake.pdf",
-        "encriptable": true
+        "encriptado": true
       }
     ]
-  }
+}
