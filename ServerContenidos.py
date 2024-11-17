@@ -3,7 +3,7 @@ Servidor Contenidos
 """
 from socket import *
 from datetime import datetime
-from threading import Thread
+from threading import Thread, Event
 import select
 import os
 
@@ -19,7 +19,6 @@ def log(msj: str) -> None:
             log_entry = f"{datetime.now().strftime('%H:%M:%S')} - {msj}"
             print(log_entry)
             log_file.write(f"{log_entry}\n")
-    
     except FileNotFoundError:
         print("ERROR: El archivo log.txt no existe y no se puede acceder.")
         raise  
@@ -40,7 +39,6 @@ def iniciar_log() -> None:
             log_entry = f"{datetime.now().strftime('%H:%M:%S')} - El servidor ha sido iniciado\n"
             log_file.write(log_entry)
             log(log_entry)
-    
     except FileNotFoundError as e:
         log(f"{str(e)}")  # Loguea el error si no se encuentra el archivo
         raise
@@ -52,7 +50,7 @@ except Exception as e:
     print(f"Error al iniciar el log: {str(e)}")
 
 def ver(cliente: socket) -> None:
-    """Envía al cliente los contenidos disponibles en el servidor.
+    """Envia al cliente los contenidos disponibles en el servidor.
     Args:
         cliente (socket): Socket del cliente con el que estamos trabajando
     Returns:
@@ -101,21 +99,24 @@ clientes = {}
 # Comandos disponibles
 comandos = ["VER", "DESCARGAR", "FIN"]
 
+# Evento para detener el servidor
+stop_event = Event()
+
 def serverInterface():
     """Funcion de consola para controlar el servidor."""
     while True:
         consola = input()
         if consola.startswith("exit"):
             log("Servidor detenido por comando 'exit'")
-            s.close()  # Cierra el socket principal
+            stop_event.set()  # Señaliza que el servidor debe detenerse
             break
 
 # Bucle principal del servidor
 def server():
-    while True:
+    while not stop_event.is_set(): # en vez de true, 
         try:
             # Nuevas conexiones o mensajes entrantes
-            ready_to_read, _, _ = select.select(inputs, [], [])
+            ready_to_read, _, _ = select.select(inputs, [], [], 1)
 
             # Miramos cada socket listo para leer
             for sock in ready_to_read:
@@ -133,7 +134,7 @@ def server():
                         # Logueamos el mensaje recibido
                         log(f"Mensaje recibido de cliente {clientes[sock]} : {mensaje_rx}")
 
-                        # Verificamos si el comando recibido es válido
+                        # Verificamos si el comando recibido es valido
                         if mensaje_rx.split()[0] not in comandos:
                             # Comando no reconocido
                             sock.send(f"Comando no reconocido de {clientes[sock]}\n".encode())
@@ -153,7 +154,7 @@ def server():
                             # DESCARGAR: enviar archivo solicitado
                             get(sock, mensaje_rx)
                     else:
-                        # Si no hay mensaje, el cliente cerró la conexión
+                        # Si no hay mensaje, el cliente cerro la conexion
                         log(f"Cliente {clientes[sock]} desconectado")  
                         sock.close()
                         inputs.remove(sock)  # Eliminamos el socket del cliente
@@ -162,23 +163,21 @@ def server():
         except FileNotFoundError:
             # Error al intentar acceder a un archivo inexistente
             log("ERROR: Archivo no encontrado!")
-            sock.send("ERROR archivo no encontrado")
         except Exception as e:
             # Cualquier otro error en el servidor se loguea
             log(f"Error en el servidor: {str(e)}")
-            sock.send("ERROR en el servidor")
 
+    # Cierre del socket principal al detener el servidor
+    s.close()
+    log("Socket principal cerrado.")
 
 # Hilos
 hilo_server = Thread(target=server)
 hilo_serverInterface = Thread(target=serverInterface)
 
-
 hilo_server.start()
 hilo_serverInterface.start()
+
 # Esperamos a que ambos hilos terminen
+hilo_server.join()
 hilo_serverInterface.join()
-hilo_serverInterface.join()
-
-
-
