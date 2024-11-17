@@ -112,14 +112,18 @@ stop_event = Event()
 
 # Interfaz del servidor
 def serverInterface():
-    """Funcion de consola para controlar el servidor."""
-    while True:
-        consola = input()
-        if consola.startswith("exit"):
-            exitear()
-            break
-        elif consola.startswith("log"):
-            log(" ".join(consola.split()[1:]))
+    """Función de consola para controlar el servidor."""
+    try:
+        while True:
+            consola = input()
+            if consola.startswith("exit"):
+                exitear()
+                break
+            elif consola.startswith("log"):
+                log(" ".join(consola.split()[1:]))
+    except EOFError:
+        log("Entrada cerrada.")
+        exitear()
 
 
 # Bucle principal del servidor
@@ -191,6 +195,9 @@ except KeyboardInterrupt as e:
 except FileNotFoundError:
     # Error al intentar acceder a un archivo inexistente
     log("ERROR: Archivo no encontrado!")
+except EOFError as e:
+    log(f"Error EOF")
+    exitear()
 except Exception as e:
     # Cualquier otro error en el servidor se loguea
     log(f"Error en el servidor: {str(e)}")

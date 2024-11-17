@@ -137,7 +137,11 @@ max_len = max(len(comando) for comando in comandos)
 
 print("Introduzca INFO para obtener informacion sobre los comandos que puedes enviar")
 
-while True:
-    mensaje_tx = input("\nIntroduzca su comando : ")
-    if gestionaInputs(mensaje_tx):  # Si esperamos algo del servidor
-        recibirRespuestas()
+try:
+    while True:
+        mensaje_tx = input("\nIntroduzca su comando : ")
+        if gestionaInputs(mensaje_tx):  # Si esperamos algo del servidor
+            recibirRespuestas()
+except KeyboardInterrupt as e:
+    s.close()
+    exit()
