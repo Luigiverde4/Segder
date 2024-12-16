@@ -6,6 +6,9 @@ from datetime import datetime
 from threading import Thread, Event
 import select
 import os
+
+index_encriptacion = {}
+
 # Funciones interfaz
 def log(msj: str) -> None:
     """Guarda un log con el tiempo y el mensaje en un archivo de texto.
@@ -42,6 +45,13 @@ def iniciar_log() -> None:
     except FileNotFoundError as e:
         log(f"{str(e)}")  # Loguea el error si no se encuentra el archivo
         raise
+
+def comprobarIndex() -> str:
+    final = "\nNombre : Encriptado?\n"
+    for llave, valor in index_encriptacion.items():
+        final += f"{llave} : {valor} \n"
+    return final
+
 
 # Funciones servidor
 def ver(cliente: socket) -> None:
@@ -89,9 +99,34 @@ def exitear():
     log("Servidor detenido por exitear()")
     stop_event.set()  # Señaliza que el servidor debe detenerse
 
-# Llamamos a iniciar_log al arrancar el servidor para crearlo si o si
+def crearIndex(lst)->dict:
+    """
+    Crea un indice del contenido del servidor
+
+    Args:
+        lst (lista): Lista de ficheros en /contenidos/
+    Returns:
+        res_dict (diccionario): objeto 
+    """
+    res_dict = {}
+    for i in range(0, len(lst)):
+        res_dict[lst[i]] = False # a futuro cambiar por detector de si esta encriptado o no
+    return res_dict
+
+def comprobarEncriptacion():
+    # Coger la imagen
+
+    # Comprobar los primeros bytes para ver si pone "encriptado"
+
+    # Si es asi, return true sino false
+    pass
+
+# INICIO SERVIDOR
 try:
+# Llamamos a iniciar_log al arrancar el servidor para crearlo si o si
     iniciar_log()
+    contenido_inicial = os.listdir("contenido")
+    index_encriptacion = crearIndex(contenido_inicial)
 except Exception as e:
     print(f"Error al iniciar el log: {str(e)}")
 
@@ -107,6 +142,7 @@ s.bind(dir_socket_server)
 s.listen()
 inputs = [s]
 clientes = {}
+
 # Comandos disponibles
 comandos = ["VER", "DESCARGAR", "FIN"]
 
@@ -128,6 +164,9 @@ def serverInterface():
             # Logear datos
             elif consola.startswith("log"):
                 log(" ".join(consola.split()[1:]))
+
+            elif consola.startswith("index"):
+                log(comprobarIndex())
     except EOFError:
         log("Entrada cerrada.")
         exitear()
