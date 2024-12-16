@@ -6,7 +6,6 @@ from datetime import datetime
 from threading import Thread, Event
 import select
 import os
-
 # Funciones interfaz
 def log(msj: str) -> None:
     """Guarda un log con el tiempo y el mensaje en un archivo de texto.
@@ -76,14 +75,18 @@ def get(cliente: socket, mensaje_rx: str) -> None:
     with open(ruta, 'rb') as archivo:
         contenido = archivo.read()
         longitud = os.stat(ruta).st_size
-        msg = f"200 Longitud Contenido:{longitud}\n"
+        if nombre[:2] == "en":
+            codigo = "202"
+        else:
+            codigo = "200"
+        msg = f"{codigo} Longitud Contenido:{longitud}\n"
         cliente.send(msg.encode())
         cliente.sendall(contenido)
         log(f"Archivo enviado: {nombre} ({longitud} bytes) a {clientes[cliente]}")
 
 def exitear():
     """Cerrar el evento del servidor"""
-    log("Servidor detenido por comando")
+    log("Servidor detenido por exitear()")
     stop_event.set()  # Señaliza que el servidor debe detenerse
 
 # Llamamos a iniciar_log al arrancar el servidor para crearlo si o si
@@ -115,10 +118,14 @@ def serverInterface():
     """Función de consola para controlar el servidor."""
     try:
         while True:
+            # Tomar input del usuario 
             consola = input()
+            
+            # Fin del programa
             if consola.startswith("exit"):
                 exitear()
                 break
+            # Logear datos
             elif consola.startswith("log"):
                 log(" ".join(consola.split()[1:]))
     except EOFError:

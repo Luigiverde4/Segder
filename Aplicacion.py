@@ -8,20 +8,24 @@ def gestionaInputs(mensaje_tx:str) -> bool:
     Returns:
         bool: Si esperamos respuesta del servidor
     """
+    # Comando vacio
     if not mensaje_tx.strip():
         print("No has ingresado ningun comando, intenta otra vez.")
         return False
 
+    # INFO
     if mensaje_tx.startswith("INFO"):
         print("\nComandos disponibles:")
         for instruccion in comandos:
             print(f"{instruccion.ljust(max_len)} - {comandos[instruccion]}")
         return False
-
+    
+    #  No esta en los comnados
     elif mensaje_tx.split()[0] not in [comando.split()[0] for comando in comandos]: 
         print("Comando erróneo")
         return False
 
+    #  DESCARGAR
     elif mensaje_tx.startswith("DESCARGAR"):
         partes = mensaje_tx.split()
         if len(partes) < 2:
@@ -31,16 +35,19 @@ def gestionaInputs(mensaje_tx:str) -> bool:
             s.send(mensaje_tx.encode())
             return True
 
+    #  FIN
     elif mensaje_tx.startswith("FIN"):
         s.send(mensaje_tx.encode())
         s.close() 
         exit()
 
+    #  CLS
     elif mensaje_tx.startswith("CLS"):
         os.system("cls" if os.name == "nt" else "clear")
         print("Introduce INFO para obtener informacion sobre los comandos que puedes enviar")
         return False
 
+    #  Else -> Mandar lo que sea
     else:
         s.send(mensaje_tx.encode())
         return True
@@ -52,7 +59,9 @@ def ver(mensaje_rx: bytes) -> None:
     Returns:
         None
     """
+    # Separamos el contenido que nos han enviado
     lista_contenidos = mensaje_rx.decode().split("\n")
+    
     for contenido in lista_contenidos:
         print(contenido)
 
@@ -65,29 +74,41 @@ def descarga(mensaje_tx: str, mensaje_rx: bytes) -> None:
         None
     """
     try:
+        # Pasamos de binario a string
         mensaje_decodificado = mensaje_rx.decode()
 
+        # Archivo no existe - 400
         if mensaje_decodificado.startswith("400"):
             print("Error: El archivo solicitado no existe en el servidor.")
             return
 
+        # Archivo existe y puede estar codificado - 400
         if not mensaje_decodificado.startswith("200"):
             print("Error: El servidor no respondió con un mensaje válido para descarga.")
             return
 
+        # Calcular la longitud del archivo
         longitud = int(mensaje_decodificado.split(":")[1].strip())
         print(f"Tamaño del archivo a descargar: {longitud} bytes")
 
+        # Escribir el archivo
         with open(f"contenido_descargado/{mensaje_tx.split()[1]}", "wb") as archivo:
             bytes_descargados = 0
+            
+            # Vamos descargando los bytes del fichero
             while bytes_descargados < longitud:
                 data = s.recv(2048)
+
+                # Si no se recibe datos, paramos
                 if not data:
                     print("Error: No se recibieron más datos, la descarga puede estar incompleta.")
                     break
+
+                # Escribimos en el archivo
                 archivo.write(data)
                 bytes_descargados += len(data)
 
+            # Comprobamos el estado de la descarga
             if bytes_descargados >= longitud:
                 print("Descarga completa")
             else:
@@ -102,14 +123,19 @@ def descarga(mensaje_tx: str, mensaje_rx: bytes) -> None:
 def recibirRespuestas() -> None:
     """Funcion para tratar la respuesta del servidor."""
     try:
+        # Recibimos el mensaje
         mensaje_rx = s.recv(2048)
+
+        # Caso de error
         if not mensaje_rx:
             print("Error: No se recibió respuesta del servidor.")
             return
-
+        
+        # VER
         if mensaje_tx.startswith("VER"):
             ver(mensaje_rx)
 
+        # DESCARGAR
         elif mensaje_tx.startswith("DESCARGAR"):
             descarga(mensaje_tx, mensaje_rx)
 
