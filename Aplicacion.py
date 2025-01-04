@@ -1,8 +1,44 @@
 from socket import *
 import os
+from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+import threading
 
+k = b'\x0f\x02\xf8\xcc#\x99\xe9<7[3\xc9T\x0b\xd5I'
+iv = None
+
+# CARLOS
+def decrypt(k, iv, x):
+    aesCipher_CTR = Cipher(algorithms.AES(k), modes.CTR(iv))
+    aesDecryptor_CTR = aesCipher_CTR.decryptor()
+    archivo = aesDecryptor_CTR.update(x)
+    return archivo
+    
+def recibirLicencias() -> None:
+    """Funcion para recibir las claves de descifrado"""
+    global iv
+
+    try:
+        mensaje_rx = sl.recv(2048) # Descargar licencia ?
+        
+        if not mensaje_rx:
+            print("Error: No se recibió respuesta del servidor de licencias")
+        
+        else:
+            mensaje = mensaje_rx.decode()
+            respuesta = mensaje.split()
+            if len(respuesta) == 2:
+                iv = bytes.fromhex(respuesta[1])
+                print("Clave recibida")
+            else:
+                print(mensaje_rx)
+                
+    except Exception as e:
+        print(f"Ha ocurrido un error al recibir la respuesta del servidor: {e}")
+
+
+# CONTENIDO
 def gestionaInputs(mensaje_tx:str) -> bool:
-    """Gestiona el input del usuario y valida los comandos.
+    """Gestiona el input del usuario y valida los comandosc.
     Args:
         mensaje_tx (str): Mensaje del usuario a manejar
     Returns:
@@ -32,13 +68,13 @@ def gestionaInputs(mensaje_tx:str) -> bool:
             print("Error: Debes especificar el nombre del archivo despues de 'DESCARGAR'.")
             return False
         else:
-            s.send(mensaje_tx.encode())
+            sc.send(mensaje_tx.encode())
             return True
 
     #  FIN
     elif mensaje_tx.startswith("FIN"):
-        s.send(mensaje_tx.encode())
-        s.close() 
+        sc.send(mensaje_tx.encode())
+        sc.close() 
         exit()
 
     #  CLS
@@ -49,7 +85,7 @@ def gestionaInputs(mensaje_tx:str) -> bool:
 
     #  Else -> Mandar lo que sea
     else:
-        s.send(mensaje_tx.encode())
+        sc.send(mensaje_tx.encode())
         return True
 
 def ver(mensaje_rx: bytes) -> None:
@@ -97,7 +133,7 @@ def descarga(mensaje_tx: str, mensaje_rx: bytes) -> None:
             
             # Vamos descargando los bytes del fichero
             while bytes_descargados < longitud:
-                data = s.recv(2048)
+                data = sc.recv(2048)
 
                 # Si no se recibe datos, paramos
                 if not data:
@@ -124,7 +160,7 @@ def recibirRespuestas() -> None:
     """Funcion para tratar la respuesta del servidor."""
     try:
         # Recibimos el mensaje
-        mensaje_rx = s.recv(2048)
+        mensaje_rx = sc.recv(2048)
 
         # Caso de error
         if not mensaje_rx:
@@ -142,14 +178,23 @@ def recibirRespuestas() -> None:
     except Exception as e:
         print(f"Ha ocurrido un error al recibir la respuesta del servidor: {e}")
 
-# Datos de conexion
-dir_IP_servidor = '127.0.0.1'
-puerto_servidor = 6000
-dir_socket_servidor = (dir_IP_servidor, puerto_servidor)
+# Datos de conexion Contenido
+dir_IP_servidor_contenido = '127.0.0.1'
+dir_IP_servidor_licencias = '127.0.0.1'
+puerto_servidor_contenidos = 6000
+puerto_servidor_licencias = 6001
+
+# Datos de conexion Licencias
+dir_socket_servidor_contenido = (dir_IP_servidor_contenido, puerto_servidor_contenidos)
+dir_socket_servidor_liciencias = (dir_IP_servidor_licencias, puerto_servidor_licencias)
 
 # Socket
-s = socket(AF_INET, SOCK_STREAM)
-s.connect(dir_socket_servidor)
+sc = socket(AF_INET, SOCK_STREAM)
+sc.connect(dir_socket_servidor_contenido)
+
+sl = socket(AF_INET, SOCK_STREAM)
+sl.connect(dir_socket_servidor_liciencias)
+
 
 # Variables globales
 comandos = {
@@ -163,11 +208,32 @@ max_len = max(len(comando) for comando in comandos)
 
 print("Introduzca INFO para obtener informacion sobre los comandos que puedes enviar")
 
+def interactuarServerContenidos(mensaje_tx:str)->None:
+    """
+    Gestionar inpts y recibir respuestas del servidor de contenidos
+
+    mensaje_tx (str): Input del usuario sobre el comando que quiere usar
+    """
+    if gestionaInputs(mensaje_tx):  # Si esperamos algo del servidor
+        recibirRespuestas()
+
+def interactuarServerLicencias(mensaje_tx:str)->None:
+    """
+        Gestionar si se descarga y recibir licencias del servidor de licencias
+    """
+    if mensaje_tx.startswith("DESCARGAR"):
+        partes = mensaje_tx.split()
+        archivo = partes[1]
+        mensaje_tx = f"{archivo}"
+
+        sl.send(mensaje_tx.encode())
+        recibirLicencias()
+
 try:
     while True:
         mensaje_tx = input("\nIntroduzca su comando : ")
-        if gestionaInputs(mensaje_tx):  # Si esperamos algo del servidor
-            recibirRespuestas()
+        interactuarServerContenidos(mensaje_tx) 
+        interactuarServerLicencias(mensaje_tx)
 except KeyboardInterrupt as e:
-    s.close()
+    sc.close()
     exit()
