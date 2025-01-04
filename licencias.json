@@ -1,16 +1,9 @@
 {
     "archivos": [
-      {
-        "nombre": "skibidi.txt",
-        "encriptado": true
-      },
-      {
-        "nombre": "sigma.bmp",
-        "encriptado": false
-      },
-      {
-        "nombre": "drake.pdf",
-        "encriptado": true
-      }
+        {
+            "nombre": "a.bmp",
+            "encriptado": true,
+            "iv": 333930319320342532380223002297857451848
+        }
     ]
 }

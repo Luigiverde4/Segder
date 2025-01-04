@@ -2,39 +2,90 @@ from socket import *
 import os
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 import threading
+import ast
 
 k = b'\x0f\x02\xf8\xcc#\x99\xe9<7[3\xc9T\x0b\xd5I'
-iv = None
 
 # CARLOS
-def decrypt(k, iv, x):
-    aesCipher_CTR = Cipher(algorithms.AES(k), modes.CTR(iv))
-    aesDecryptor_CTR = aesCipher_CTR.decryptor()
-    archivo = aesDecryptor_CTR.update(x)
-    return archivo
-    
+
+def int_to_byts(i, length):
+    return i.to_bytes(length, byteorder="big")
+
+# Licencias
+def decrypt(nombre_archivo):
+    """
+    Desencripta el archivo de imagen.
+
+    nombre_archivo (str): Nombre del archivo a desencriptar.
+    """
+    try:
+        # Cargar el archivo encriptado
+        with open(f"contenido_descargado/{nombre_archivo}", "rb") as archivo_encriptado:
+            x = archivo_encriptado.read()  # Lee el archivo completo en bytes
+
+        # Obtener el IV desde el servidor (como ya haces en tu código)
+        iv = interactuarServerLicencias(mensaje_tx)
+        iv = iv.decode()  # IV como int
+        iv = int_to_byts(int(iv), 16)
+        print("IV decodificado:", iv)
+
+        # Verificar el tamaño del IV
+        if len(iv) == 16:
+            print("IV es válido para el cifrado.")
+        else:
+            print(f"Error: IV no tiene 16 bytes, tiene {len(iv)} bytes.")
+            return
+
+        # Crear el cifrador AES en modo CTR con el IV
+        aesCipher_CTR = Cipher(algorithms.AES(k), modes.CTR(iv))
+        aesDecryptor_CTR = aesCipher_CTR.decryptor()
+
+        # Desencriptar los datos
+        archivo_descifrado = aesDecryptor_CTR.update(x) + aesDecryptor_CTR.finalize()  # Lee y desencripta los datos
+
+        # Guardar el archivo desencriptado
+        with open(f"contenido_descargado/{nombre_archivo}", "wb") as archivo_descifrado_output:
+            archivo_descifrado_output.write(archivo_descifrado)
+
+        print(f"{nombre_archivo}_LIMPIO escrito con éxito!")
+
+    except Exception as e:
+        print(f"Ha ocurrido un error al desencriptar el archivo: {e}")
+
+def interactuarServerLicencias(mensaje_tx:str)->None:
+    """
+        Gestionar si se descarga y recibir licencias del servidor de licencias
+    """
+    # Coger el nombre del archivo que hemos pedido para pedir el IV
+    partes = mensaje_tx.split()
+    archivo = partes[1]
+    mensaje_tx = f"{archivo}"
+
+    # Pedir el IV
+    sl.send(mensaje_tx.encode())
+    iv = recibirLicencias()
+    return iv
+
 def recibirLicencias() -> None:
     """Funcion para recibir las claves de descifrado"""
-    global iv
-
     try:
-        mensaje_rx = sl.recv(2048) # Descargar licencia ?
-        
+        mensaje_rx = sl.recv(2048).decode()
+
         if not mensaje_rx:
             print("Error: No se recibió respuesta del servidor de licencias")
-        
+
         else:
-            mensaje = mensaje_rx.decode()
+            mensaje = mensaje_rx
             respuesta = mensaje.split()
             if len(respuesta) == 2:
-                iv = bytes.fromhex(respuesta[1])
                 print("Clave recibida")
+                iv = respuesta[1].encode()
+                return iv
             else:
                 print(mensaje_rx)
-                
+
     except Exception as e:
         print(f"Ha ocurrido un error al recibir la respuesta del servidor: {e}")
-
 
 # CONTENIDO
 def gestionaInputs(mensaje_tx:str) -> bool:
@@ -149,12 +200,15 @@ def descarga(mensaje_tx: str, mensaje_rx: bytes) -> None:
                 print("Descarga completa")
             else:
                 print("Error: La descarga se interrumpió o fue incompleta.")
+        decrypt(mensaje_tx.split()[1])
     except ValueError as e:
         print(f"Error al interpretar la longitud del contenido en la respuesta del servidor: {e}")
     except FileNotFoundError as e:
         print(f"Error al guardar el archivo descargado: {e}")
     except Exception as e:
         print(f"Ha ocurrido un error inesperado durante la descarga: {e}")
+
+
 
 def recibirRespuestas() -> None:
     """Funcion para tratar la respuesta del servidor."""
@@ -177,6 +231,8 @@ def recibirRespuestas() -> None:
 
     except Exception as e:
         print(f"Ha ocurrido un error al recibir la respuesta del servidor: {e}")
+
+
 
 # Datos de conexion Contenido
 dir_IP_servidor_contenido = '127.0.0.1'
@@ -217,23 +273,11 @@ def interactuarServerContenidos(mensaje_tx:str)->None:
     if gestionaInputs(mensaje_tx):  # Si esperamos algo del servidor
         recibirRespuestas()
 
-def interactuarServerLicencias(mensaje_tx:str)->None:
-    """
-        Gestionar si se descarga y recibir licencias del servidor de licencias
-    """
-    if mensaje_tx.startswith("DESCARGAR"):
-        partes = mensaje_tx.split()
-        archivo = partes[1]
-        mensaje_tx = f"{archivo}"
-
-        sl.send(mensaje_tx.encode())
-        recibirLicencias()
 
 try:
     while True:
         mensaje_tx = input("\nIntroduzca su comando : ")
         interactuarServerContenidos(mensaje_tx) 
-        interactuarServerLicencias(mensaje_tx)
 except KeyboardInterrupt as e:
     sc.close()
     exit()

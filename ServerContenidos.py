@@ -6,8 +6,12 @@ from datetime import datetime
 from threading import Thread, Event
 import select
 import os
+import base64
+import json
+from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 
 index_encriptacion = {}
+k = b'\x0f\x02\xf8\xcc#\x99\xe9<7[3\xc9T\x0b\xd5I'
 
 # Funciones interfaz
 def log(msj: str) -> None:
@@ -118,6 +122,50 @@ def crearIndex(lst)->dict:
         res_dict[lst[i]] = False # a futuro cambiar por detector de si esta encriptado o no
     return res_dict
 
+from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
+import os
+import base64
+
+def byts_to_int(b):
+    return int.from_bytes(b,byteorder="big")
+
+def encrypt():
+    with open("licencias.json", 'r') as file:
+        listado = json.load(file)
+
+    for archivo in listado['archivos']:
+        nombre = archivo['nombre']
+        vector = archivo['iv']
+        encriptado = archivo['encriptado']
+
+        ruta = os.path.join("contenido", nombre)
+
+        if not encriptado:
+            if not vector:
+                # Genera un IV de 16 bytes si no existe
+                iv = os.urandom(16)
+                archivo['iv'] = byts_to_int(iv)  # Guardar el IV como int
+            else:
+                iv = bytes(archivo['iv'])  # Convertir de lista de enteros a bytes
+
+            aesCipher_CTR = Cipher(algorithms.AES(k), modes.CTR(iv))
+            aesEncryptor_CTR = aesCipher_CTR.encryptor()
+
+            with open(ruta, 'rb') as docu:
+                contenido = docu.read()
+
+            contenido_encriptado = aesEncryptor_CTR.update(contenido) + aesEncryptor_CTR.finalize()
+
+            with open(ruta, 'wb') as almacen:
+                almacen.write(contenido_encriptado)
+
+            archivo['encriptado'] = True
+
+    with open("licencias.json", 'w') as file:
+        json.dump(listado, file, indent=4)
+
 # INICIO SERVIDOR
 try:
 # Llamamos a iniciar_log al arrancar el servidor para crearlo si o si
@@ -139,7 +187,7 @@ s.bind(dir_socket_server)
 s.listen()
 inputs = [s]
 clientes = {}
-
+encrypt()
 # Comandos disponibles
 comandos = ["VER", "DESCARGAR", "FIN"]
 

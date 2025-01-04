@@ -37,9 +37,9 @@ def iniciar_log() -> None:
         None
     """
     try:
-        archivo_existe = os.path.exists("log.txt")
+        archivo_existe = os.path.exists("log_Licencias.txt")
         
-        with open("logs/log.txt", "a") as log_file:
+        with open("logs/log_Licencias.txt", "a") as log_file:
             if archivo_existe:
                 log_file.write("\n")  # Anade una linea en blanco solo si el archivo ya existe
             log_entry = f"{datetime.now().strftime('%H:%M:%S')} - El servidor ha sido iniciado\n"
@@ -108,6 +108,31 @@ clientes = {}
 
 stop_event = Event()
 
+
+def sacarIV(sock: socket,mensaje_rx: str)->None:
+    """
+    Itera sobre los archivos y manda su VI
+
+    sock (Socket): Socket del cliente que estamos tratando
+    mensaje_rx (str): Nombre del archivo a desencriptar
+    """
+    for archivo in datos_json.get('archivos', []):
+        if archivo['nombre'] == mensaje_rx:
+
+            clave_c = archivo.get("iv")
+            print(clave_c)
+            # clave_c es un string
+            print("Clave_c: ", clave_c)
+            
+            if not clave_c:
+                sock.send("El archivo no está encriptado\n".encode())
+                log(f"El archivo solicitado {mensaje_rx} no esta cifrado")
+            else:
+                mensaje_tx = f"Vector: {clave_c}"
+                sock.send(mensaje_tx.encode())
+                log(f"El archivo solicitado {mensaje_rx} si está cifrado")
+
+
 #Hacemos la función principal del server
 def server():
     try:
@@ -124,17 +149,8 @@ def server():
                         mensaje_rx = sock.recv(2048).decode().strip()
                         if mensaje_rx:
                             log(f"Mensaje recibido del cliente {clientes[sock]}: {mensaje_rx}")
-                            for archivo in datos_json.get('archivos', []):
-                                if archivo['nombre'] == mensaje_rx:
-                                    clave_c = archivo.get('iv', '')
-                                    if not clave_c:
-                                        sock.send("El archivo no está encriptado\n".encode())
-                                        log(f"El archivo solicitado {mensaje_rx} no esta cifrado")
-                                    else:
-                                        clave = base64.b64decode(clave_c)
-                                        mensaje_tx = f"Vector: {clave}"
-                                        sock.send(mensaje_tx.encode())
-                                        log(f"El archivo solicitado {mensaje_rx} si está cifrado")
+                            sacarIV(sock,mensaje_rx)
+
                         else:
                             log(f"Cliente {clientes[sock]} desconectado")
                             inputs.remove(sock)
@@ -150,13 +166,13 @@ def server():
     except Exception as e:
         log(f"Error en el servidor: {e}")
         s.close()
+    except KeyboardInterrupt as e:
+        log(f"Interrupción de teclado")
+
+        exitear()
                         
 #Se crean los hilos
 iniciar_log()
 hilo_server = Thread(target=server)
 hilo_server.start()
-try:
-    hilo_server.join()
-except KeyboardInterrupt as e:
-    log(f"Interrupción de teclado")
-    exitear()
+hilo_server.join()
