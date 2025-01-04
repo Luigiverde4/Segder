@@ -89,7 +89,7 @@ def descarga(mensaje_tx: str, mensaje_rx: bytes) -> None:
 
         # Calcular la longitud del archivo
         longitud = int(mensaje_decodificado.split(":")[1].strip())
-        print(f"Tamaño del archivo a descargar: {longitud} bytes")
+        print(f"Tamaño del archivo a descargar: {longitud/1000} Kb")
 
         # Escribir el archivo
         with open(f"contenido_descargado/{mensaje_tx.split()[1]}", "wb") as archivo:

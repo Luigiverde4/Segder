@@ -47,6 +47,9 @@ def iniciar_log() -> None:
         raise
 
 def comprobarIndex() -> str:
+    """
+    Crea un string con el nombre y si esta encriptado segun el JSON
+    """
     final = "\nNombre : Encriptado?\n"
     for llave, valor in index_encriptacion.items():
         final += f"{llave} : {valor} \n"
@@ -92,7 +95,7 @@ def get(cliente: socket, mensaje_rx: str) -> None:
         msg = f"{codigo} Longitud Contenido:{longitud}\n"
         cliente.send(msg.encode())
         cliente.sendall(contenido)
-        log(f"Archivo enviado: {nombre} ({longitud} bytes) a {clientes[cliente]}")
+        log(f"Archivo enviado: {nombre} ({longitud/1000} Kb) a {clientes[cliente]}")
 
 def exitear():
     """Cerrar el evento del servidor"""
