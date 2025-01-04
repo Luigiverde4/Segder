@@ -46,7 +46,7 @@ def iniciar_log() -> None:
         log(f"{str(e)}")  # Loguea el error si no se encuentra el archivo
         raise
 
-def comprobarIndex() -> str:
+def mostrarIndex() -> str:
     """
     Crea un string con el nombre y si esta encriptado segun el JSON
     """
@@ -86,13 +86,15 @@ def get(cliente: socket, mensaje_rx: str) -> None:
         return
 
     with open(ruta, 'rb') as archivo:
+        # Cargar el contenido y peso
         contenido = archivo.read()
         longitud = os.stat(ruta).st_size
-        if nombre[:2] == "en":
-            codigo = "202"
-        else:
-            codigo = "200"
+
+        # Aviso de longitud
+        codigo = "200"
         msg = f"{codigo} Longitud Contenido:{longitud}\n"
+        
+        # Mandar el archivo
         cliente.send(msg.encode())
         cliente.sendall(contenido)
         log(f"Archivo enviado: {nombre} ({longitud/1000} Kb) a {clientes[cliente]}")
@@ -115,14 +117,6 @@ def crearIndex(lst)->dict:
     for i in range(0, len(lst)):
         res_dict[lst[i]] = False # a futuro cambiar por detector de si esta encriptado o no
     return res_dict
-
-def comprobarEncriptacion():
-    # Coger la imagen
-
-    # Comprobar los primeros bytes para ver si pone "encriptado"
-
-    # Si es asi, return true sino false
-    pass
 
 # INICIO SERVIDOR
 try:
@@ -169,7 +163,7 @@ def serverInterface():
                 log(" ".join(consola.split()[1:]))
 
             elif consola.startswith("index"):
-                log(comprobarIndex())
+                log(mostrarIndex())
     except EOFError:
         log("Entrada cerrada.")
         exitear()
