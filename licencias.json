@@ -11,6 +11,10 @@
       {
         "nombre": "drake.pdf",
         "encriptado": true
+      },
+      {
+        "nombre": "sexer.bmp",
+        "encriptado": false
       }
     ]
 }
