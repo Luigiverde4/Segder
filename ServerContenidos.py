@@ -142,7 +142,7 @@ def encrypt(nombre_input: str, nombre_sucio: str) -> None:
     # Obtener el IV o generarlo si no existe o es inválido
     iv = archivo_encontrado.get('iv', "")
     if not iv or (type(iv) != int and len(iv) != 16):
-        iv = os.urandom(16)  # Generar un nuevo IV si es necesario
+        iv = os.urandom(16)
     else:
         iv = int_to_byts(iv, 16)  # Convertir a bytes si ya es válido
 
