@@ -324,6 +324,28 @@ def actualizarLicenciasJSON(listado)->None:
 
     actualizarIndex()
 
+def checkEncriptacion(nombre_input:str):
+    with open("licencias.json", 'r') as file:
+        listado = json.load(file)
+
+    # Buscar el archivo original en el JSON
+    archivo_encontrado = None
+    for archivo in listado['archivos']:
+        if archivo['nombre'] == nombre_input:
+            archivo_encontrado = archivo
+            break
+
+    # Si no se encuentra el archivo original, avisar
+    if not archivo_encontrado:
+        raise FileNotFoundError(f"El archivo {nombre_input} no se encuentra en licencias.json")
+
+    if archivo_encontrado["encriptado"]:
+        return "True".encode()
+    else:
+        return "False".encode()
+    
+
+
 # INICIO SERVIDOR
 try:
 # Llamamos a iniciar_log al arrancar el servidor para crearlo si o si
@@ -346,7 +368,7 @@ inputs = [s]
 clientes = {}
 
 # Comandos disponibles
-comandos = ["VER", "DESCARGAR", "FIN"]
+comandos = ["VER", "DESCARGAR", "FIN","checkEncriptacion"]
 
 # Evento para detener el servidor
 stop_event = Event()
@@ -424,6 +446,11 @@ def server():
                     elif mensaje_rx.startswith("DESCARGAR"):
                         # DESCARGAR: enviar archivo solicitado
                         get(sock, mensaje_rx)
+
+                    elif mensaje_rx.startswith("checkEncriptacion"):
+                        archivo = mensaje_rx.split(" ")[1]
+                        estaEncriptado = checkEncriptacion(archivo)
+                        sock.send(estaEncriptado)
                 else:
                     # Si no hay mensaje, el cliente cerro la conexion
                     log(f"Cliente {clientes[sock]} desconectado")  

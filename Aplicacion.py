@@ -8,19 +8,26 @@ def int_to_byts(i, length):
     return i.to_bytes(length, byteorder="big")
 
 # Licencias
-def decrypt(nombre_archivo):
+def decrypt(nombre_archivo:str):
     """
     Desencripta el archivo de imagen.
 
     nombre_archivo (str): Nombre del archivo a desencriptar.
     """
     try:
+
+        # Comprobar si esta encriptado
+        if not comprobarEncriptado(nombre_archivo):
+            print("El archivo no está encriptado.")
+            return
+    
+        print("Esta encriptado")
         # Cargar el archivo encriptado
         with open(f"contenido_descargado/{nombre_archivo}", "rb") as archivo_encriptado:
             x = archivo_encriptado.read()  # Lee el archivo completo en bytes
-
+ 
         # Obtener el IV desde el servidor
-        iv = interactuarServerLicencias(mensaje_tx)
+        iv = pedirLicencias(mensaje_tx)
         iv = iv.decode()  # IV como int
         iv = int_to_byts(int(iv), 16)
         print("IV decodificado:", iv)
@@ -48,7 +55,19 @@ def decrypt(nombre_archivo):
     except Exception as e:
         print(f"Ha ocurrido un error al desencriptar el archivo: {e}")
 
-def interactuarServerLicencias(mensaje_tx:str)->None:
+def comprobarEncriptado(nombre_archivo):
+    mensaje_rx = f"checkEncriptacion {nombre_archivo}".encode()
+    sc.send(mensaje_rx)
+
+    response = sc.recv(1024) 
+    if response == b'True':
+        return True
+    elif response == b'False':
+        return False
+    else:
+        return None
+
+def pedirLicencias(mensaje_tx:str)->None:
     """
         Gestionar si se descarga y recibir licencias del servidor de licencias
     """
@@ -206,6 +225,7 @@ def descarga(mensaje_tx: str, mensaje_rx: bytes) -> None:
                 print("Descarga completa")
             else:
                 print("Error: La descarga se interrumpió o fue incompleta.")
+
         decrypt(mensaje_tx.split()[1])
     except ValueError as e:
         print(f"Error al interpretar la longitud del contenido en la respuesta del servidor: {e}")
