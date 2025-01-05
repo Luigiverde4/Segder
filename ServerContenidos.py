@@ -145,7 +145,6 @@ def encrypt(nombre_input: str, nombre_sucio: str) -> None:
     iv = archivo_encontrado.get('iv', "")
     if not iv or (type(iv) != int and len(iv) != 16):
         iv = os.urandom(16)
-        archivo_encontrado['iv'] = byts_to_int(iv)  # Actualizar el IV en el original como entero
     else:
         iv = int_to_byts(iv, 16)  # Convertir a bytes si ya es válido
 

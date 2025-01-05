@@ -45,7 +45,7 @@ def decrypt(nombre_archivo):
         with open(f"contenido_descargado/{nombre_archivo}", "wb") as archivo_descifrado_output:
             archivo_descifrado_output.write(archivo_descifrado)
 
-        print(f"{nombre_archivo}_LIMPIO escrito con éxito!")
+        print(f"{nombre_archivo} escrito con éxito!")
 
     except Exception as e:
         print(f"Ha ocurrido un error al desencriptar el archivo: {e}")
