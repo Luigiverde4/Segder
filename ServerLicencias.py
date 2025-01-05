@@ -7,7 +7,6 @@ import json
 import select
 import os
 
-k = b'\x0f\x02\xf8\xcc#\x99\xe9<7[3\xc9T\x0b\xd5I'
 index_encriptacion = {}
 
 # Detenemos el server
@@ -96,11 +95,16 @@ def encrypt(nombre_input: str, nombre_sucio: str) -> None:
 
     # Obtener el IV o generarlo si no existe o es inválido
     iv = archivo_encontrado.get('iv', "")
+    k = archivo_encontrado.get('k', "")
     if not iv or (type(iv) != int and len(iv) != 16):
         iv = os.urandom(16)
     else:
         iv = int_to_byts(iv, 16)  # Convertir a bytes si ya es válido
-
+    
+    if not k or (type(k) != int and len(k) != 16):
+        k = os.urandom(16)
+    else:
+        k = int_to_byts(k, 16)  # Convertir a bytes si ya es válido
     # Si el archivo original ya está encriptado, no tiene sentido volver a encriptarlo
     if archivo_encontrado.get('encriptado', False):
         log(f"El archivo {archivo_encontrado['nombre']} ya está encriptado.")
@@ -127,7 +131,8 @@ def encrypt(nombre_input: str, nombre_sucio: str) -> None:
     nuevo_archivo = {
         "nombre": nombre_sucio,
         "encriptado": True,
-        "iv": byts_to_int(iv)  # Guardar el IV como entero
+        "iv": byts_to_int(iv),  # Guardar el IV como entero
+        "k": byts_to_int(k)
     }
     listado['archivos'].append(nuevo_archivo)
 
@@ -161,11 +166,20 @@ def decrypt(nombre_input: str,nombre_limpio:str)->None:
 
         iv = archivo_encontrado["iv"]
         iv = int_to_byts(iv,16)
+        k = archivo_encontrado["k"]
+        k = int_to_byts(k,16)
         # Verificar el tamaño del IV
         if len(iv) == 16:
             print("IV es válido para el cifrado.")
         else:
             print(f"Error: IV no tiene 16 bytes, tiene {len(iv)} bytes.")
+            return
+        
+        # Verificar el tamaño del k
+        if len(k) == 16:
+            print("k es válido para el cifrado.")
+        else:
+            print(f"Error: k no tiene 16 bytes, tiene {len(k)} bytes.")
             return
 
         # Crear el cifrador AES en modo CTR con el IV
@@ -183,7 +197,8 @@ def decrypt(nombre_input: str,nombre_limpio:str)->None:
         nuevo_archivo = {
             "nombre": nombre_limpio,
             "encriptado": False,
-            "iv": byts_to_int(iv)  # Guardar el IV como entero
+            "iv": byts_to_int(iv),  # Guardar el IV como entero
+            "k": byts_to_int(k)  # Guardar el IV como entero
         }
         listado['archivos'].append(nuevo_archivo)
 
@@ -274,10 +289,11 @@ def verificar_archivos(json_data, carpeta)->None:
         encriptable = archivo_info['encriptable']
         vector = archivo_info.get('iv', '')
         encriptado = archivo_info['encriptado']
+        k = archivo_info.get('k', '')
         
         # Verifica si el archivo esta presente en la carpeta 'contenido'
         if archivo_nombre in archivos_en_carpeta:
-            print(f"El archivo '{archivo_nombre}' esta en la carpeta. Encriptable: {encriptable}. iv: {vector} Encriptado: {encriptado}")
+            print(f"El archivo '{archivo_nombre}' esta en la carpeta. Encriptable: {encriptable}. iv: {vector} Encriptado: {encriptado}. k: {k}")
         else:
             print(f"El archivo '{archivo_nombre}'no se encuentra en la carpeta.")
 
@@ -305,21 +321,28 @@ def sacarIV(sock: socket,mensaje_rx: str)->None:
     sock (Socket): Socket del cliente que estamos tratando
     mensaje_rx (str): Nombre del archivo a desencriptar
     """
+    msj = mensaje_rx.split("-")
+    print(msj)
+    k_pub = msj[2]
+    k_pub = [int(num) for num in k_pub.strip("[]").split(",")] # Pasamos de string a lista con los elementos [n,e]
+    
     for archivo in datos_json.get('archivos', []):
-        if archivo['nombre'] == mensaje_rx:
-
+        if archivo['nombre'] == msj[0]:
+            k = archivo.get("k")
             clave_c = archivo.get("iv")
             print(clave_c)
             # clave_c es un string
             print("Clave_c: ", clave_c)
             
-            if not clave_c:
+            if not k:
                 sock.send("El archivo no está encriptado\n".encode())
-                log(f"El archivo solicitado {mensaje_rx} no esta cifrado")
+                log(f"El archivo solicitado {msj[0]} no esta cifrado")
             else:
-                mensaje_tx = f"Vector: {clave_c}"
-                sock.send(mensaje_tx.encode())
-                log(f"El archivo solicitado {mensaje_rx} si está cifrado")
+                k_encrypt = pow(k,k_pub[1],k_pub[0])
+                mensaje_iv = f"Vector: {clave_c} Clave: {k_encrypt}"
+                sock.send(str(mensaje_iv).encode())
+
+                log(f"El archivo solicitado {msj[0]} si está cifrado")
 
 
 #Hacemos la función principal del server
@@ -335,11 +358,10 @@ def server():
                     log(f"Conexión aceptada desde {addr}")
                 else:
                     try:
-                        mensaje_rx = sock.recv(2048).decode().strip()
+                        mensaje_rx = sock.recv(2048).decode()
                         if mensaje_rx:
                             log(f"Mensaje recibido del cliente {clientes[sock]}: {mensaje_rx}")
                             sacarIV(sock,mensaje_rx)
-
                         else:
                             log(f"Cliente {clientes[sock]} desconectado")
                             inputs.remove(sock)

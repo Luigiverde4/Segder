@@ -3,8 +3,27 @@ import os
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 from cryptography.hazmat.primitives import padding
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+from cryptography.hazmat.primitives.asymmetric import rsa
+from cryptography.hazmat.primitives import serialization
 
-k = b'\x0f\x02\xf8\xcc#\x99\xe9<7[3\xc9T\x0b\xd5I'
+
+def generar_claves():
+    """
+    Genera una clave pública y una clave privada
+    """
+    kpr = rsa.generate_private_key(65537,2048)
+    k_pub = kpr.public_key()
+    private_number = kpr.private_numbers()
+    
+    public_numbers = k_pub.public_numbers()
+    n = public_numbers.n
+    e = public_numbers.e
+    
+    d = private_number.d
+    
+    return d,[n,e]
+
+
 
 def int_to_byts(i, length):
     return i.to_bytes(length, byteorder="big")
@@ -29,16 +48,24 @@ def decrypt(nombre_archivo:str):
             x = archivo_encriptado.read()  # Lee el archivo completo en bytes
  
         # Obtener el IV desde el servidor
-        iv = pedirLicencias(mensaje_tx)
+        iv,k = pedirLicencias(mensaje_tx)
         iv = iv.decode()  # IV como int
+        k = k.decode()  # IV como int
         iv = int_to_byts(int(iv), 16)
+        k = int_to_byts(int(k), 16)
         print("IV decodificado:", iv)
+        print("k decodificado:", k)
 
         # Verificar el tamaño del IV
         if len(iv) == 16:
             print("IV es válido para el cifrado.")
         else:
             print(f"Error: IV no tiene 16 bytes, tiene {len(iv)} bytes.")
+            return
+        if len(k) == 16:
+            print("k es válido para el cifrado.")
+        else:
+            print(f"Error: k no tiene 16 bytes, tiene {len(k)} bytes.")
             return
 
         # Crear el cifrador AES en modo CTR con el IV
@@ -76,15 +103,22 @@ def pedirLicencias(mensaje_tx:str)->None:
     # Coger el nombre del archivo que hemos pedido para pedir el IV
     partes = mensaje_tx.split()
     archivo = partes[1]
-    mensaje_tx = f"{archivo}"
+    
 
     # Pedir el IV
+    # Generamos las claves
+    kpr,k_pub = generar_claves()
+    print("Clave pública:",k_pub)
+    mensaje_tx = f"{archivo}-Clave:-{k_pub}"
     sl.send(mensaje_tx.encode())
-    iv = recibirLicencias()
-    return iv
+    iv,k = recibirLicencias(kpr,k_pub[0])
+    return iv,k
 
-def recibirLicencias() -> None:
-    """Funcion para recibir las claves de descifrado"""
+def recibirLicencias(kpr,n) -> None:
+    """Funcion para recibir las claves de descifrado
+    Arg: kpr: Clave privada para descifrar el mensaje recibido
+         n: Modulo para descifrar el mensaje recibido
+    """
     try:
         mensaje_rx = sl.recv(2048).decode()
 
@@ -92,13 +126,16 @@ def recibirLicencias() -> None:
             print("Error: No se recibió respuesta del servidor de licencias")
 
         else:
-            mensaje = mensaje_rx
-            respuesta = mensaje.split()
-            if len(respuesta) == 2:
+            respuesta = mensaje_rx.split()
+            k = pow(int(respuesta[3]),kpr,n)
+            print("Respuesta recibidad:",respuesta)
+            if len(respuesta) == 4:
                 print("Clave recibida")
                 iv = respuesta[1].encode()
-                return iv
+                k = str(k).encode()
+                return iv,k
             else:
+                print("cuidadin")
                 print(mensaje_rx)
 
     except Exception as e:
@@ -259,57 +296,6 @@ def recibirRespuestas() -> None:
     except Exception as e:
         print(f"Ha ocurrido un error al recibir la respuesta del servidor: {e}")
 
-# JESUS
-
-def des_AES_CBC(x: str):
-    """Desencripta unas cadena de bits con AES CBC.
-    Args:
-        x (str): String de bits del contenido digital encriptado
-    Returns:
-        textDecrypt (str) : String de bits con el contenido digital original
-    """
-    key = b'w\xdf\x82\x80Z\xc5\xcc\x14\xbd\x8d\x7f\xde\x15s\xad\xdf'
-    IV = b'\xdd\x1c\xe2?3,\x8bS\x1a\xc1\xca\xc1$X4\xb6'
-    aesCipher = Cipher(algorithms.AES(key),modes.CBC(IV))
-    aesDecryptor = aesCipher.decryptor()
-    
-    N = algorithms.AES.block_size
-    unpadded_data = aesDecryptor.update(x)
-    unpadder = padding.PKCS7(N).unpadder()
-    textDecrypt = unpadder.update(unpadded_data)+unpadder.finalize()
-    return textDecrypt
-
-def desencriptar_imagen_CBC(data:str):
-    """Desencripta una imagen con AES CBC.
-    Args:
-        data (str): String de bits de imagen encriptada
-    Returns:
-        archivo (str) : Ruta del archivo de imagen desencriptada
-    """
-    cab = data[0:54] # Guardamos la cabecera para que solo se encripte la imagen
-    data = data[54:] # Extraemos la cabecera de lo que vamos a encriptar
-    dataDecrypt = des_AES_CBC(data)
-    imgDecrypt = open('prueba.bmp','wb') # Creamos fichero nuevo para guardar los datos desencriptados
-    dataDecrypt = cab + dataDecrypt
-    imgDecrypt.write(dataDecrypt) # Escribimos los datos desencriptados en el fichero
-
-# ??????
-"""
-inputs = [s]
-ready_to_read, ready_to_write, in_error = select.select(inputs,[], [], 5)
-if len(ready_to_read) != 0: # Si hay sockets para LEER
-    for soc in ready_to_read: # Para cada socket
-        if soc is s: # Si el socket no está aceptado, aceptamos la conexión
-            clientsock, clientaddr = soc.accept()
-            inputs.append(clientsock)
-            print("Conectado desde: ",clientaddr)
-        else: # Si está aceptado
-            data = soc.recv(1024)
-            print("Enviando datos: ", data.decode())
-            for client in inputs:
-                if client is not s and client is not soc:
-                    client.send(data)
-"""
 
 # Datos de conexion Contenido
 dir_IP_servidor_contenido = '127.0.0.1'
