@@ -259,40 +259,6 @@ def recibirRespuestas() -> None:
     except Exception as e:
         print(f"Ha ocurrido un error al recibir la respuesta del servidor: {e}")
 
-# JESUS
-
-def des_AES_CBC(x: str):
-    """Desencripta unas cadena de bits con AES CBC.
-    Args:
-        x (str): String de bits del contenido digital encriptado
-    Returns:
-        textDecrypt (str) : String de bits con el contenido digital original
-    """
-    key = b'w\xdf\x82\x80Z\xc5\xcc\x14\xbd\x8d\x7f\xde\x15s\xad\xdf'
-    IV = b'\xdd\x1c\xe2?3,\x8bS\x1a\xc1\xca\xc1$X4\xb6'
-    aesCipher = Cipher(algorithms.AES(key),modes.CBC(IV))
-    aesDecryptor = aesCipher.decryptor()
-    
-    N = algorithms.AES.block_size
-    unpadded_data = aesDecryptor.update(x)
-    unpadder = padding.PKCS7(N).unpadder()
-    textDecrypt = unpadder.update(unpadded_data)+unpadder.finalize()
-    return textDecrypt
-
-def desencriptar_imagen_CBC(data:str):
-    """Desencripta una imagen con AES CBC.
-    Args:
-        data (str): String de bits de imagen encriptada
-    Returns:
-        archivo (str) : Ruta del archivo de imagen desencriptada
-    """
-    cab = data[0:54] # Guardamos la cabecera para que solo se encripte la imagen
-    data = data[54:] # Extraemos la cabecera de lo que vamos a encriptar
-    dataDecrypt = des_AES_CBC(data)
-    imgDecrypt = open('prueba.bmp','wb') # Creamos fichero nuevo para guardar los datos desencriptados
-    dataDecrypt = cab + dataDecrypt
-    imgDecrypt.write(dataDecrypt) # Escribimos los datos desencriptados en el fichero
-
 # ??????
 """
 inputs = [s]

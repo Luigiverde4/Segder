@@ -1,24 +1,9 @@
 {
     "archivos": [
         {
-            "nombre": "a.bmp",
+            "nombre": "Vila.png",
             "encriptado": false,
-            "iv": ""
-        },
-        {
-            "nombre": "b.bmp",
-            "encriptado": true,
-            "iv": 163152718281823642541539466321212103529
-        },
-        {
-            "nombre": "c.bmp",
-            "encriptado": true,
-            "iv": 132144710267675485133695687857512327180
-        },
-        {
-            "nombre": "d.bmp",
-            "encriptado": false,
-            "iv": 132144710267675485133695687857512327180
+            "iv": 333930319320342532380223002297857451848
         }
     ]
 }
