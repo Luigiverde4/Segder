@@ -55,8 +55,6 @@ def encriptar_imagen_CBC(archivo:str):
     dataEncrypt = cab + dataEncrypt # Añadimos la cabecera a los datos encriptados
     return dataEncrypt
 
-
-
 def byts_to_int(b)->int:
     """
     Pasa bytes a int
@@ -144,8 +142,7 @@ def encrypt(nombre_input: str, nombre_sucio: str) -> None:
     # Obtener el IV o generarlo si no existe o es inválido
     iv = archivo_encontrado.get('iv', "")
     if not iv or (type(iv) != int and len(iv) != 16):
-        iv = os.urandom(16)
-        archivo_encontrado['iv'] = byts_to_int(iv)  # Actualizar el IV en el original como entero
+        iv = os.urandom(16)  # Generar un nuevo IV si es necesario
     else:
         iv = int_to_byts(iv, 16)  # Convertir a bytes si ya es válido
 
