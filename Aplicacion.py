@@ -3,12 +3,9 @@ import os
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 from cryptography.hazmat.primitives import padding
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
-import threading
-import ast
+import select
 
 k = b'\x0f\x02\xf8\xcc#\x99\xe9<7[3\xc9T\x0b\xd5I'
-
-# CARLOS
 
 def int_to_byts(i, length):
     return i.to_bytes(length, byteorder="big")
@@ -90,7 +87,7 @@ def recibirLicencias() -> None:
         print(f"Ha ocurrido un error al recibir la respuesta del servidor: {e}")
 
 
-
+# JESUS
 def des_AES_CBC(x: str):
     """Desencripta unas cadena de bits con AES CBC.
     Args:
@@ -111,7 +108,6 @@ def des_AES_CBC(x: str):
 
     return textDecrypt
 
-
 def desencriptar_imagen_CBC(data:str):
     """Desencripta una imagen con AES CBC.
     Args:
@@ -131,6 +127,7 @@ def desencriptar_imagen_CBC(data:str):
     imgDecrypt.write(dataDecrypt) # Escribimos los datos desencriptados en el fichero
 
 
+# CONTENIDO
 def gestionaInputs(mensaje_tx:str) -> bool:
     """Gestiona el input del usuario y valida los comandosc.
     Args:
@@ -251,8 +248,6 @@ def descarga(mensaje_tx: str, mensaje_rx: bytes) -> None:
     except Exception as e:
         print(f"Ha ocurrido un error inesperado durante la descarga: {e}")
 
-
-
 def recibirRespuestas() -> None:
     """Funcion para tratar la respuesta del servidor."""
     try:
@@ -275,7 +270,14 @@ def recibirRespuestas() -> None:
     except Exception as e:
         print(f"Ha ocurrido un error al recibir la respuesta del servidor: {e}")
 
+def interactuarServerContenidos(mensaje_tx:str)->None:
+    """
+    Gestionar inpts y recibir respuestas del servidor de contenidos
 
+    mensaje_tx (str): Input del usuario sobre el comando que quiere usar
+    """
+    if gestionaInputs(mensaje_tx):  # Si esperamos algo del servidor
+        recibirRespuestas()
 
 # Datos de conexion Contenido
 dir_IP_servidor_contenido = '127.0.0.1'
@@ -295,6 +297,8 @@ sl = socket(AF_INET, SOCK_STREAM)
 sl.connect(dir_socket_servidor_liciencias)
 
 
+### ???
+"""
 inputs = [s]
 ready_to_read, ready_to_write, in_error = select.select(inputs,[], [], 5)
 if len(ready_to_read) != 0: # Si hay sockets para LEER
@@ -309,21 +313,7 @@ if len(ready_to_read) != 0: # Si hay sockets para LEER
             for client in inputs:
                 if client is not s and client is not soc:
                     client.send(data)
-
-inputs = [s]
-ready_to_read, ready_to_write, in_error = select.select(inputs,[], [], 5)
-if len(ready_to_read) != 0: # Si hay sockets para LEER
-    for soc in ready_to_read: # Para cada socket
-        if soc is s: # Si el socket no está aceptado, aceptamos la conexión
-            clientsock, clientaddr = soc.accept()
-            inputs.append(clientsock)
-            print("Conectado desde: ",clientaddr)
-        else: # Si está aceptado
-            data = soc.recv(1024)
-            print("Enviando datos: ", data.decode())
-            for client in inputs:
-                if client is not s and client is not soc:
-                    client.send(data)
+"""
 
 # Variables globales
 comandos = {
@@ -336,16 +326,6 @@ comandos = {
 max_len = max(len(comando) for comando in comandos)
 
 print("Introduzca INFO para obtener informacion sobre los comandos que puedes enviar")
-
-def interactuarServerContenidos(mensaje_tx:str)->None:
-    """
-    Gestionar inpts y recibir respuestas del servidor de contenidos
-
-    mensaje_tx (str): Input del usuario sobre el comando que quiere usar
-    """
-    if gestionaInputs(mensaje_tx):  # Si esperamos algo del servidor
-        recibirRespuestas()
-
 
 try:
     while True:
