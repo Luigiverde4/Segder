@@ -23,7 +23,7 @@ def decrypt(nombre_archivo):
         with open(f"contenido_descargado/{nombre_archivo}", "rb") as archivo_encriptado:
             x = archivo_encriptado.read()  # Lee el archivo completo en bytes
 
-        # Obtener el IV desde el servidor (como ya haces en tu código)
+        # Obtener el IV desde el servidor
         iv = interactuarServerLicencias(mensaje_tx)
         iv = iv.decode()  # IV como int
         iv = int_to_byts(int(iv), 16)

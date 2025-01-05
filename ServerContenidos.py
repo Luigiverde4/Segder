@@ -139,6 +139,64 @@ def encrypt(nombre_input: str, nombre_sucio: str) -> None:
 
     log(f"Archivo {nombre_input} encriptado y guardado como {nombre_sucio}")
 
+def decrypt(nombre_input: str,nombre_limpio:str)->None:
+    """
+    Desencripta el archivo de imagen.
+
+    nombre_input (str): Nombre del archivo a desencriptar.
+    nombre_limpio (str): Nombre del archivo desencriptado a guardar.
+    """
+    try:
+        # Cargar el archivo encriptado
+        with open(f"contenido/{nombre_input}", "rb") as archivo_encriptado:
+            x = archivo_encriptado.read()  # Lee el archivo en bytes
+
+        # Obtener el IV de licencias.json
+        with open("licencias.json", 'r') as file:
+            listado = json.load(file)
+
+        # Buscar el archivo original en el JSON
+        archivo_encontrado = None
+        for archivo in listado['archivos']:
+            if archivo['nombre'] == nombre_input:
+                archivo_encontrado = archivo
+                break
+
+        iv = archivo_encontrado["iv"]
+        iv = int_to_byts(iv,16)
+        # Verificar el tamaño del IV
+        if len(iv) == 16:
+            print("IV es válido para el cifrado.")
+        else:
+            print(f"Error: IV no tiene 16 bytes, tiene {len(iv)} bytes.")
+            return
+
+        # Crear el cifrador AES en modo CTR con el IV
+        aesCipher_CTR = Cipher(algorithms.AES(k), modes.CTR(iv))
+        aesDecryptor_CTR = aesCipher_CTR.decryptor()
+
+        # Desencriptar los datos
+        archivo_descifrado = aesDecryptor_CTR.update(x) + aesDecryptor_CTR.finalize()  # Lee y desencripta los datos
+
+        # Guardar el archivo desencriptado
+        with open(f"contenido/{nombre_limpio}", "wb") as archivo_descifrado_output:
+            archivo_descifrado_output.write(archivo_descifrado)
+
+        # Agregar el nuevo archivo cifrado a licencias.json
+        nuevo_archivo = {
+            "nombre": nombre_limpio,
+            "encriptado": False,
+            "iv": byts_to_int(iv)  # Guardar el IV como entero
+        }
+        listado['archivos'].append(nuevo_archivo)
+
+        # Actualizar licencias.json y el indice
+        actualizarLicenciasJSON(listado)
+
+        log(f"Archivo {nombre_input} desencriptado y guardado como {nombre_limpio}")
+
+    except Exception as e:
+        print(f"Ha ocurrido un error al desencriptar el archivo: {e}")
 
 # Funciones servidor
 def ver(cliente: socket) -> None:
@@ -270,6 +328,10 @@ def serverInterface():
             elif consola.startswith("encrypt"):
                 _, nombre_limpio, nombre_sucio = consola.split()
                 encrypt(nombre_limpio, nombre_sucio)
+
+            elif consola.startswith("decrypt"):
+                _, nombre_limpio, nombre_sucio = consola.split()
+                decrypt(nombre_limpio, nombre_sucio)
                 
     except EOFError:
         log("Entrada cerrada.")
