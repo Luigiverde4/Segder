@@ -1,7 +1,6 @@
 from socket import *
 from datetime import datetime
 from threading import Thread, Event
-import base64
 import json
 import select
 import os

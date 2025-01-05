@@ -6,7 +6,6 @@ from datetime import datetime
 from threading import Thread, Event
 import select
 import os
-import base64
 import json
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 
