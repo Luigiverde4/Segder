@@ -10,9 +10,7 @@ import json
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 
 index_encriptacion = {}
-k = b'\x0f\x02\xf8\xcc#\x99\xe9<7[3\xc9T\x0b\xd5I'
 from cryptography.hazmat.primitives import padding
-from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 
 
 def AES_CBC(x: str):
@@ -35,7 +33,6 @@ def AES_CBC(x: str):
     textEncrypt = aesEncryptor.update(padded_data)
     return textEncrypt
 
-
 def encriptar_imagen_CBC(archivo:str):
     """Encripta una imagen con AES CBC.
     Args:
@@ -54,21 +51,6 @@ def encriptar_imagen_CBC(archivo:str):
 
     dataEncrypt = cab + dataEncrypt # Añadimos la cabecera a los datos encriptados
     return dataEncrypt
-
-def byts_to_int(b)->int:
-    """
-    Pasa bytes a int
-
-    b (bytes): Clave VI a pasar de int a bytes
-    """
-    return int.from_bytes(b,byteorder="big")
-
-def int_to_byts(i, length)->bytes:
-    """
-    Pasa un int a bytes
-    """
-    return i.to_bytes(length, byteorder="big")
-
 
 # Funciones interfaz
 def log(msj: str) -> None:
@@ -116,129 +98,6 @@ def mostrarIndex() -> str:
         final += f"{llave} : {valor} \n"
     return final
 
-def encrypt(nombre_input: str, nombre_sucio: str) -> None:
-    """
-    Encripta un fichero y lo guarda con un nuevo nombre.
-
-    Args:
-        nombre_input (str): Nombre del fichero a encriptar.
-        nombre_sucio (str): Nombre del fichero encriptado.
-    """
-    # Cargar el contenido de licencias.json
-    with open("licencias.json", 'r') as file:
-        listado = json.load(file)
-
-    # Buscar el archivo original en el JSON
-    archivo_encontrado = None
-    for archivo in listado['archivos']:
-        if archivo['nombre'] == nombre_input:
-            archivo_encontrado = archivo
-            break
-
-    # Si no se encuentra el archivo original, avisar
-    if not archivo_encontrado:
-        raise FileNotFoundError(f"El archivo {nombre_input} no se encuentra en licencias.json")
-
-    # Obtener el IV o generarlo si no existe o es inválido
-    iv = archivo_encontrado.get('iv', "")
-    if not iv or (type(iv) != int and len(iv) != 16):
-        iv = os.urandom(16)
-    else:
-        iv = int_to_byts(iv, 16)  # Convertir a bytes si ya es válido
-
-    # Si el archivo original ya está encriptado, no tiene sentido volver a encriptarlo
-    if archivo_encontrado.get('encriptado', False):
-        log(f"El archivo {archivo_encontrado['nombre']} ya está encriptado.")
-        return
-
-    # Cifrar el contenido del archivo original
-    aesCipher_CTR = Cipher(algorithms.AES(k), modes.CTR(iv))
-    aesEncryptor_CTR = aesCipher_CTR.encryptor()
-
-    # Abrir el contenido del archivo sin encriptar
-    ruta_original = os.path.join("contenido", nombre_input)
-    with open(ruta_original, 'rb') as archivo_limpio:
-        contenido = archivo_limpio.read()
-
-    # Encriptar
-    contenido_encriptado = aesEncryptor_CTR.update(contenido) + aesEncryptor_CTR.finalize()
-
-    # Guardar el contenido cifrado con el nuevo nombre
-    ruta_encriptada = os.path.join("contenido", nombre_sucio)
-    with open(ruta_encriptada, 'wb') as archivo_encriptado:
-        archivo_encriptado.write(contenido_encriptado)
-
-    # Agregar el nuevo archivo cifrado a licencias.json
-    nuevo_archivo = {
-        "nombre": nombre_sucio,
-        "encriptado": True,
-        "iv": byts_to_int(iv)  # Guardar el IV como entero
-    }
-    listado['archivos'].append(nuevo_archivo)
-
-    # Actualizar licencias.json y el indice
-    actualizarLicenciasJSON(listado)
-
-    log(f"Archivo {nombre_input} encriptado y guardado como {nombre_sucio}")
-
-def decrypt(nombre_input: str,nombre_limpio:str)->None:
-    """
-    Desencripta el archivo de imagen.
-
-    nombre_input (str): Nombre del archivo a desencriptar.
-    nombre_limpio (str): Nombre del archivo desencriptado a guardar.
-    """
-    try:
-        # Cargar el archivo encriptado
-        with open(f"contenido/{nombre_input}", "rb") as archivo_encriptado:
-            x = archivo_encriptado.read()  # Lee el archivo en bytes
-
-        # Obtener el IV de licencias.json
-        with open("licencias.json", 'r') as file:
-            listado = json.load(file)
-
-        # Buscar el archivo original en el JSON
-        archivo_encontrado = None
-        for archivo in listado['archivos']:
-            if archivo['nombre'] == nombre_input:
-                archivo_encontrado = archivo
-                break
-
-        iv = archivo_encontrado["iv"]
-        iv = int_to_byts(iv,16)
-        # Verificar el tamaño del IV
-        if len(iv) == 16:
-            print("IV es válido para el cifrado.")
-        else:
-            print(f"Error: IV no tiene 16 bytes, tiene {len(iv)} bytes.")
-            return
-
-        # Crear el cifrador AES en modo CTR con el IV
-        aesCipher_CTR = Cipher(algorithms.AES(k), modes.CTR(iv))
-        aesDecryptor_CTR = aesCipher_CTR.decryptor()
-
-        # Desencriptar los datos
-        archivo_descifrado = aesDecryptor_CTR.update(x) + aesDecryptor_CTR.finalize()  # Lee y desencripta los datos
-
-        # Guardar el archivo desencriptado
-        with open(f"contenido/{nombre_limpio}", "wb") as archivo_descifrado_output:
-            archivo_descifrado_output.write(archivo_descifrado)
-
-        # Agregar el nuevo archivo cifrado a licencias.json
-        nuevo_archivo = {
-            "nombre": nombre_limpio,
-            "encriptado": False,
-            "iv": byts_to_int(iv)  # Guardar el IV como entero
-        }
-        listado['archivos'].append(nuevo_archivo)
-
-        # Actualizar licencias.json y el indice
-        actualizarLicenciasJSON(listado)
-
-        log(f"Archivo {nombre_input} desencriptado y guardado como {nombre_limpio}")
-
-    except Exception as e:
-        print(f"Ha ocurrido un error al desencriptar el archivo: {e}")
 
 # Funciones servidor
 def ver(cliente: socket) -> None:
@@ -330,7 +189,6 @@ def actualizarLicenciasJSON(listado) -> None:
 
     actualizarIndex()
 
-
 def checkEncriptacion(nombre_input:str):
     with open("licencias.json", 'r') as file:
         listado = json.load(file)
@@ -352,15 +210,6 @@ def checkEncriptacion(nombre_input:str):
         return "False".encode()
     
 
-# INICIO SERVIDOR
-try:
-# Llamamos a iniciar_log al arrancar el servidor para crearlo si o si
-    iniciar_log()
-    actualizarIndex()
-except Exception as e:
-    print(f"Error al iniciar el log: {str(e)}")
-
-
 # Configuracion de conexion
 dir_IP_server = "127.0.0.1"
 puerto_server = 6000
@@ -375,7 +224,6 @@ clientes = {}
 
 # Comandos disponibles
 comandos = ["VER", "DESCARGAR", "FIN","checkEncriptacion"]
-
 # Evento para detener el servidor
 stop_event = Event()
 
@@ -397,15 +245,9 @@ def serverInterface():
 
             elif consola.startswith("index"):
                 log(mostrarIndex())
+            else:
+                log("\nComando erroneo\n")
             
-            elif consola.startswith("encrypt"):
-                _, nombre_limpio, nombre_sucio = consola.split()
-                encrypt(nombre_limpio, nombre_sucio)
-
-            elif consola.startswith("decrypt"):
-                _, nombre_limpio, nombre_sucio = consola.split()
-                decrypt(nombre_limpio, nombre_sucio)
-                
     except EOFError:
         log("Entrada cerrada.")
         exitear()
@@ -476,8 +318,11 @@ hilo_server.start()
 hilo_serverInterface.start()
 
 
+# INICIO SERVIDOR
 # Esperamos a que ambos hilos terminen
 try:
+    iniciar_log()
+    actualizarIndex()
     hilo_server.join()
     hilo_serverInterface.join()
 except KeyboardInterrupt as e:
