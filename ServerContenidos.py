@@ -309,17 +309,27 @@ def actualizarIndex()->dict:
     except Exception as e:
         print(f"Error al procesar el JSON licencias.json: {str(e)}")
 
-def actualizarLicenciasJSON(listado)->None:
+def actualizarLicenciasJSON(listado) -> None:
     """
-    Actualiza el archivo JSON de licencias con el objeto listado
+    Actualiza el archivo JSON de licencias con el objeto listado,
+    asegurando que no haya archivos repetidos.
 
     listado (objeto): Objeto de Python con los datos de nombre, encriptado y iv de los archivos
     """
+    # Verificar y eliminar archivos repetidos, dejando solo el más reciente
+    archivos_vistos = {}
+    for archivo in listado['archivos']:
+        archivos_vistos[archivo['nombre']] = archivo  # Sobrescribir con el último archivo encontrado
+
+    # Reemplazar el listado con los archivos actualizados (sin duplicados)
+    listado['archivos'] = list(archivos_vistos.values())
+
     # Guardar el estado actualizado en el archivo JSON
     with open("licencias.json", 'w') as file:
         json.dump(listado, file, indent=4)
 
     actualizarIndex()
+
 
 def checkEncriptacion(nombre_input:str):
     with open("licencias.json", 'r') as file:
@@ -341,7 +351,6 @@ def checkEncriptacion(nombre_input:str):
     else:
         return "False".encode()
     
-
 
 # INICIO SERVIDOR
 try:
