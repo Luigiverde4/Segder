@@ -350,9 +350,9 @@ def comprueba_firma(firma, publica, valor_hash):
     
     hash_d = pow(firma_entero, e, n)
     if hash_d == valor_hash:
-        print('Firma digital válida')
+        log('Firma digital válida')
     else:
-        print('Firma invalida, mensaje corrupto')
+        log('Firma invalida, mensaje corrupto')
 
 def sacarIV(sock: socket,mensaje_rx: str)->None:
     """
