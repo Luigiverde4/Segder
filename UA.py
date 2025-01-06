@@ -1,6 +1,7 @@
 from socket import socket, AF_INET, SOCK_STREAM
-from threading import Thread
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+from cryptography.hazmat.primitives.asymmetric import rsa
+import hashlib
 
 # Clave de cifrado
 k = b'\x0f\x02\xf8\xcc#\x99\xe9<7[3\xc9T\x0b\xd5I'
@@ -14,6 +15,12 @@ sc.connect((dir_IP_servidor_contenido, puerto_servidor_contenidos))
 # Server Licencias
 dir_IP_servidor_licencias = '127.0.0.1'
 puerto_servidor_licencias = 6001
+
+exponente = 65537
+tam = 2048
+privada = rsa.generate_private_key(exponente, tam)
+
+
 
 sl = socket(AF_INET, SOCK_STREAM)
 sl.connect((dir_IP_servidor_licencias, puerto_servidor_licencias))
@@ -31,6 +38,8 @@ print("Esperando conexión del CDM...")
 
 def int_to_byts(i, length):
     return i.to_bytes(length, byteorder="big")
+
+# LICENCIAS
 
 def recibirLicencias() -> None:
     """Funcion para recibir las claves de descifrado"""
@@ -53,19 +62,43 @@ def recibirLicencias() -> None:
     except Exception as e:
         print(f"Ha ocurrido un error al recibir la respuesta del servidor: {e}")
 
-def pedirLicencias(nombre_archivo:str)->None:
+def pedirLicencias(mensaje_tx:str)->None:
     """
         Gestionar si se descarga y recibir licencias del servidor de licencias
     """
-    mensaje_tx = f"{nombre_archivo}"
-
-    # Pedir el IV
-    print("SL",mensaje_tx)
+    # Coger el nombre del archivo que hemos pedido para pedir el IV
+    partes = mensaje_tx.split()
+    archivo = partes[1]
+    mensaje_tx = f"{archivo}"
+    firma, valor_hash = firmado(privada)
+    mensaje_tx = f"{archivo} f{firma}"
+    
     sl.send(mensaje_tx.encode())
     iv = recibirLicencias()
     print("IV conseguido ", iv)
     return iv
 
+def firmado(privada):
+    """
+    Genera un hash a partir del mensaje que vamos a mandar al servidor de licencias con la firma digital
+        Args:
+    mensaje: El mensaje que mandamos, será solamente el niombre del archivo del que solicitamos licencia
+    privada: La clave privada RSA, la cual se usa de base para encriptar el mensaje
+    """
+    #Generamos el hash con el mensaje de comprobación
+    mensaje_bits = b"Firma digital del mensaje"
+    hash_m = int.from_bytes(hashlib.sha256(mensaje_bits).digest(), byteorder = 'big')
+    
+    #Ahora sacamos de la clave privada los numeros para la encriptacion con pow
+    numeros_privados = privada.private_numbers()
+    n = numeros_privados.n
+    d = numeros_privados.d
+    
+    firma = pow(hash_m, d, n) #Usamos pow para sacar la firma
+    return firma
+
+
+# CONTENIDOS
 def decrypt(nombre_archivo: str):
     """
     Desencripta un archivo con el IV proporcionado.
