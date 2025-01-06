@@ -2,7 +2,9 @@ from socket import *
 from datetime import datetime
 from threading import Thread, Event
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+from cryptography.hazmat.primitives.asymmetric import rsa
 from PIL import Image, ImageDraw, ImageFont
+import hashlib
 
 import json
 import select
@@ -10,6 +12,16 @@ import os
 
 k = b'\x0f\x02\xf8\xcc#\x99\xe9<7[3\xc9T\x0b\xd5I'
 index_encriptacion = {}
+
+#Generamos las claves necesarias para comprobar la firma digital
+exponente = 65537
+tam = 2048
+privada = rsa.generate_private_key(exponente, tam)
+publica = privada.public_key()
+
+#Ahora producimos el hash
+mensaje_bits = b"Firma digital del mensaje"
+valor_hash = int.from_bytes(hashlib.sha256(mensaje_bits).digest(), byteorder = 'big')
 
 # Detenemos el server
 def exitear():
@@ -321,6 +333,26 @@ clientes = {}
 
 stop_event = Event()
 
+def comprueba_firma(firma, publica, valor_hash):
+    """
+    Descifra la firma digital del mensaje, asegurando que este es correcto
+        Args:
+    firma: La firma digital generada en la aplicacion
+    publica: La clave publica que usaremos para descifrar el hash
+    valor_hash: El valor que calculamos del hash, nos servira para comprobar la veracidad del mensaje
+    """
+    #Genera los números públicos para el descifrado
+    numeros_publicos = publica.public_numbers()
+    e = numeros_publicos.e
+    n = numeros_publicos.n
+    
+    firma_entero = int(firma)
+    
+    hash_d = pow(firma_entero, e, n)
+    if hash_d == valor_hash:
+        print('Firma digital válida')
+    else:
+        print('Firma invalida, mensaje corrupto')
 
 def sacarIV(sock: socket,mensaje_rx: str)->None:
     """
@@ -361,8 +393,10 @@ def server():
                     try:
                         mensaje_rx = sock.recv(2048).decode().strip()
                         if mensaje_rx:
-                            log(f"Mensaje recibido del cliente {clientes[sock]}: {mensaje_rx}")
-                            sacarIV(sock,mensaje_rx)
+                            mensaje, firma = mensaje_rx.split(" ", 1)
+                            log(f"Mensaje recibido del cliente {clientes[sock]}: {mensaje}")
+                            comprueba_firma(firma, publica, valor_hash)
+                            sacarIV(sock,mensaje)
 
                         else:
                             log(f"Cliente {clientes[sock]} desconectado")

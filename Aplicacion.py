@@ -3,8 +3,15 @@ import os
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 from cryptography.hazmat.primitives import padding
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+from cryptography.hazmat.primitives.asymmetric import rsa
+import hashlib
 
 k = b'\x0f\x02\xf8\xcc#\x99\xe9<7[3\xc9T\x0b\xd5I'
+
+#Generamos las claves necesarias para la firma digital
+exponente = 65537
+tam = 2048
+privada = rsa.generate_private_key(exponente, tam)
 
 def int_to_byts(i, length):
     return i.to_bytes(length, byteorder="big")
@@ -69,6 +76,25 @@ def comprobarEncriptado(nombre_archivo):
     else:
         return None
 
+def firmado(privada):
+    """
+    Genera un hash a partir del mensaje que vamos a mandar al servidor de licencias con la firma digital
+        Args:
+    mensaje: El mensaje que mandamos, será solamente el niombre del archivo del que solicitamos licencia
+    privada: La clave privada RSA, la cual se usa de base para encriptar el mensaje
+    """
+    #Generamos el hash con el mensaje de comprobación
+    mensaje_bits = b"Firma digital del mensaje"
+    hash_m = int.from_bytes(hashlib.sha256(mensaje_bits).digest(), byteorder = 'big')
+    
+    #Ahora sacamos de la clave privada los numeros para la encriptacion con pow
+    numeros_privados = privada.private_numbers()
+    n = numeros_privados.n
+    d = numeros_privados.d
+    
+    firma = pow(hash_m, d, n) #Usamos pow para sacar la firma
+    return firma
+
 def pedirLicencias(mensaje_tx:str)->None:
     """
         Gestionar si se descarga y recibir licencias del servidor de licencias
@@ -76,7 +102,8 @@ def pedirLicencias(mensaje_tx:str)->None:
     # Coger el nombre del archivo que hemos pedido para pedir el IV
     partes = mensaje_tx.split()
     archivo = partes[1]
-    mensaje_tx = f"{archivo}"
+    firma, valor_hash = firmado(privada)
+    mensaje_tx = f"{archivo} f{firma}"
 
     # Pedir el IV
     sl.send(mensaje_tx.encode())
