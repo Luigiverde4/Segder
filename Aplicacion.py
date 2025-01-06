@@ -28,6 +28,13 @@ def generar_claves():
 def int_to_byts(i, length):
     return i.to_bytes(length, byteorder="big")
 
+def byts_to_int(b)->int:
+    """
+    Pasa bytes a int
+
+    b (bytes): Clave VI a pasar de int a bytes
+    """
+    return int.from_bytes(b,byteorder="big")
 # Licencias
 def decrypt(nombre_archivo:str):
     """
@@ -121,23 +128,26 @@ def recibirLicencias(kpr,n) -> None:
     """
     try:
         mensaje_rx = sl.recv(2048).decode()
-
         if not mensaje_rx:
             print("Error: No se recibió respuesta del servidor de licencias")
-
         else:
             respuesta = mensaje_rx.split()
-            k = pow(int(respuesta[3]),kpr,n)
-            print("Respuesta recibidad:",respuesta)
-            if len(respuesta) == 4:
+            k_rsa_encrypt = int(respuesta[5])
+            IV_rsa = int_to_byts(int(respuesta[7]),16)
+            k_rsa = int_to_byts((pow(k_rsa_encrypt,kpr,n)),16)
+
+            aesCipherCTR = Cipher(algorithms.AES(k_rsa),modes.CTR(IV_rsa))
+            aesDecryptorCTR = aesCipherCTR.decryptor()
+            k = aesDecryptorCTR.update(int_to_byts(int(respuesta[3]),16))
+            if len(respuesta) == 8:
                 print("Clave recibida")
                 iv = respuesta[1].encode()
-                k = str(k).encode()
+                k = str(byts_to_int(k)).encode()
+                print(iv,k)
                 return iv,k
             else:
                 print("cuidadin")
                 print(mensaje_rx)
-
     except Exception as e:
         print(f"Ha ocurrido un error al recibir la respuesta del servidor: {e}")
 

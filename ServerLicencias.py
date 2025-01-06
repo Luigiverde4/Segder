@@ -321,11 +321,15 @@ def sacarIV(sock: socket,mensaje_rx: str)->None:
     sock (Socket): Socket del cliente que estamos tratando
     mensaje_rx (str): Nombre del archivo a desencriptar
     """
+    k_rsa = os.urandom(16) # Generamos las claves que vamos a usar para encriptar en CTR las claves de los contenidos
+    IV_rsa = os.urandom(16)
+
     msj = mensaje_rx.split("-")
     print(msj)
-    k_pub = msj[2]
+    k_pub = msj[2] # Recibimos la clave pública como string
     k_pub = [int(num) for num in k_pub.strip("[]").split(",")] # Pasamos de string a lista con los elementos [n,e]
-    
+    print("Número gigante:",byts_to_int(k_rsa))
+    k_rsa_encrypt = pow(byts_to_int(k_rsa),k_pub[1],k_pub[0])
     for archivo in datos_json.get('archivos', []):
         if archivo['nombre'] == msj[0]:
             k = archivo.get("k")
@@ -333,13 +337,15 @@ def sacarIV(sock: socket,mensaje_rx: str)->None:
             print(clave_c)
             # clave_c es un string
             print("Clave_c: ", clave_c)
-            
             if not k:
                 sock.send("El archivo no está encriptado\n".encode())
                 log(f"El archivo solicitado {msj[0]} no esta cifrado")
             else:
-                k_encrypt = pow(k,k_pub[1],k_pub[0])
-                mensaje_iv = f"Vector: {clave_c} Clave: {k_encrypt}"
+                aesCipherCTR = Cipher(algorithms.AES(k_rsa),modes.CTR(IV_rsa))
+                aesEncryptorCTR = aesCipherCTR.encryptor()
+                k_encrypt = aesEncryptorCTR.update(int_to_byts(k,16))
+                print("pasamos")
+                mensaje_iv = f"Vector: {clave_c} Clave: {byts_to_int(k_encrypt)} K_RSA: {k_rsa_encrypt} IV_RSA: {byts_to_int(IV_rsa)}"
                 sock.send(str(mensaje_iv).encode())
 
                 log(f"El archivo solicitado {msj[0]} si está cifrado")
