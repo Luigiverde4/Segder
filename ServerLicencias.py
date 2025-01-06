@@ -329,7 +329,7 @@ def sacarIV(sock: socket,mensaje_rx: str)->None:
     k_pub = msj[2] # Recibimos la clave pública como string
     k_pub = [int(num) for num in k_pub.strip("[]").split(",")] # Pasamos de string a lista con los elementos [n,e]
     print("Número gigante:",byts_to_int(k_rsa))
-    k_rsa_encrypt = pow(byts_to_int(k_rsa),k_pub[1],k_pub[0])
+    k_rsa_encrypt = pow(byts_to_int(k_rsa),k_pub[1],k_pub[0]) # Encriptado la clave k_rsa que vamos a enviar
     for archivo in datos_json.get('archivos', []):
         if archivo['nombre'] == msj[0]:
             k = archivo.get("k")

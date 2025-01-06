@@ -12,46 +12,6 @@ from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 index_encriptacion = {}
 from cryptography.hazmat.primitives import padding
 
-
-def AES_CBC(x: str):
-    """Encripta unas cadena de bits con AES CBC.
-    Args:
-        x (str): String de bits del contenido digital
-    Returns:
-        textEncrypt (str) : String de bits con el contenido digital cifrado
-    """
-    key = b'w\xdf\x82\x80Z\xc5\xcc\x14\xbd\x8d\x7f\xde\x15s\xad\xdf'
-    IV = b'\xdd\x1c\xe2?3,\x8bS\x1a\xc1\xca\xc1$X4\xb6'
-    aesCipher = Cipher(algorithms.AES(key),modes.CBC(IV))
-    aesEncryptor = aesCipher.encryptor()
-    
-    N = algorithms.AES.block_size
-
-    padder = padding.PKCS7(N).padder()
-    padded_data = padder.update(x)+padder.finalize()
-
-    textEncrypt = aesEncryptor.update(padded_data)
-    return textEncrypt
-
-def encriptar_imagen_CBC(archivo:str):
-    """Encripta una imagen con AES CBC.
-    Args:
-        archivo (str): Ruta de la imagen
-    Returns:
-        dataEncrypt (str) : String de bits de la imagen encriptada
-    """
-    img=open(archivo,'rb') # Abrimos la imagen BMP
-    data=img.read() # Leemos lo datos en bytes de la imagen
-
-    cab = data[0:54] # Guardamos la cabecera para que solo se encripte la imagen
-
-    data = data[54:] # Extraemos la cabecera de lo que vamos a encriptar
-
-    dataEncrypt = AES_CBC(data) # Encriptamos
-
-    dataEncrypt = cab + dataEncrypt # Añadimos la cabecera a los datos encriptados
-    return dataEncrypt
-
 # Funciones interfaz
 def log(msj: str) -> None:
     """Guarda un log con el tiempo y el mensaje en un archivo de texto.
