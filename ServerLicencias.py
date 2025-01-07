@@ -294,8 +294,6 @@ def actualizarIndex()->dict:
         print(f"Error al procesar el JSON licencias.json: {str(e)}")
 
 
-# Ruta al archivo JSON que contiene la información
-ruta_json = 'licencias.json'
 
 # Ruta a la carpeta 'contenido' donde están guardados los archivos
 ruta_contenido = 'contenido'
@@ -338,7 +336,7 @@ def verificar_archivos(json_data, carpeta)->None:
         else:
             print(f"El archivo '{archivo_nombre}'no se encuentra en la carpeta.")
 
-datos_json = leer_json(ruta_json)
+
 
 #Configuracion de conexión
 dir_IP_server = '127.0.0.1'
@@ -393,7 +391,7 @@ def sacarIV(sock: socket,mensaje_rx: str)->None:
     k_pub = msj[1] # Recibimos la clave pública como string
     k_pub = [int(num) for num in k_pub.strip("[]").split(",")] # Pasamos de string a lista con los elementos [n,e]
     k_rsa_encrypt = pow(byts_to_int(k_rsa),k_pub[1],k_pub[0]) # Encriptado la clave k_rsa que vamos a enviar
-
+    datos_json = leer_json("licencias.json")
     for archivo in datos_json.get('archivos', []):
         print(f"MSJ 0 {msj[0]}")
         print(f"Archivo[nombre] {archivo['nombre'] }")
