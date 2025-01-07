@@ -4,9 +4,9 @@ from threading import Thread, Event
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 from cryptography.hazmat.primitives.asymmetric import rsa
 from PIL import Image, ImageDraw, ImageFont
+from funciones import *
 import hashlib
 
-import json
 import select
 import os
 
@@ -21,43 +21,6 @@ def exitear():
     """Cerrar el evento del servidor"""
     log("Servidor detenido por exitear()")
     stop_event.set()  # Señaliza que el servidor debe detenerse
-
-# Funciones interfaz
-def log(msj: str) -> None:
-    """Guarda un log con el tiempo y el mensaje en un archivo de texto.
-    Args:
-        msj (str): Mensaje a guardar en el log
-    Returns:
-        None
-    """
-    try:
-        with open("logs/log.txt", "a") as log_file:
-            log_entry = f"{datetime.now().strftime('%H:%M:%S')} - {msj}"
-            print(log_entry)
-            log_file.write(f"{log_entry}\n")
-    except FileNotFoundError:
-        print("ERROR: El archivo log.txt no existe y no se puede acceder.")
-        raise  
-
-def iniciar_log() -> None:
-    """Escribe un mensaje de inicio en el log al iniciar el servidor anadiendo una linea en blanco si ya existe el archivo.
-    Args:
-        None
-    Returns:
-        None
-    """
-    try:
-        archivo_existe = os.path.exists("log_Licencias.txt")
-        
-        with open("logs/log_Licencias.txt", "a") as log_file:
-            if archivo_existe:
-                log_file.write("\n")  # Anade una linea en blanco solo si el archivo ya existe
-            log_entry = f"{datetime.now().strftime('%H:%M:%S')} - El servidor ha sido iniciado\n"
-            log_file.write(log_entry + '\n')
-        log(log_entry)
-    except FileNotFoundError as e:
-        log(f"{str(e)}")  # Loguea el error si no se encuentra el archivo
-        raise
 
 # Encriptacion y Desencriptacion
 
@@ -97,38 +60,34 @@ def MdA(foto):
     archivo.save(f"contenido/{foto}")
 
 # Encriptacion Decriptacion y el Index
-def encrypt(nombre_input: str, nombre_sucio: str) -> None:
+def encrypt(nombre_input: str, nombre_sucio: str, diContenidos: dict) -> None:
     """
     Encripta un fichero y lo guarda con un nuevo nombre.
 
     Args:
         nombre_input (str): Nombre del fichero a encriptar.
         nombre_sucio (str): Nombre del fichero encriptado.
+        diContenidos (dict): Diccionario que contiene la lista de archivos y sus propiedades.
     """
-    # Cargar el contenido de licencias.json
-    with open("licencias.json", 'r') as file:
-        listado = json.load(file)
-
-    # Buscar el archivo original en el JSON
+    # Buscar el archivo original en el diccionario
     archivo_encontrado = None
-    for archivo in listado['archivos']:
-        if archivo['nombre'] == nombre_input:
-            formato = os.path.splitext(archivo['nombre'])[1]
+    for archivo in diContenidos['archivos']:
+        if archivo['Nombre'] == nombre_input:
+            formato = os.path.splitext(archivo['Nombre'])[1]
             if formato in [".jpeg",".jpg",".png",".bmp"]:
-                MdA(archivo['nombre'])
-            formato = os.path.splitext(archivo['nombre'])[1]
+                MdA(archivo['Nombre'])
+            formato = os.path.splitext(archivo['Nombre'])[1]
             archivo_encontrado = archivo
             break
 
     # Si no se encuentra el archivo original, avisar
     if not archivo_encontrado:
-        raise FileNotFoundError(f"El archivo {nombre_input} no se encuentra en licencias.json")
-
+        raise FileNotFoundError(f"El archivo {nombre_input} no se encuentra en diContenidos")
 
     print("PRE generar IV y K")
     # Obtener el IV o generarlo si no existe o es inválido
-    iv = archivo_encontrado.get('iv', "")
-    k = archivo_encontrado.get('k', "")
+    iv = archivo_encontrado.get('IV', "")
+    k = archivo_encontrado.get('K', "")
     if not iv or (type(iv) != int and len(iv) != 16):
         iv = os.urandom(16)
     else:
@@ -141,8 +100,8 @@ def encrypt(nombre_input: str, nombre_sucio: str) -> None:
     
     print("POST generar IV y K")
     # Si el archivo original ya está encriptado, no tiene sentido volver a encriptarlo
-    if archivo_encontrado.get('encriptado', False):
-        log(f"El archivo {archivo_encontrado['nombre']} ya está encriptado.")
+    if archivo_encontrado.get('Encriptado', 'False') == 'True':
+        log(f"El archivo {archivo_encontrado['Nombre']} ya está encriptado.")
 
         return
 
@@ -167,21 +126,22 @@ def encrypt(nombre_input: str, nombre_sucio: str) -> None:
     with open(ruta_encriptada, 'wb') as archivo_encriptado:
         archivo_encriptado.write(contenido_encriptado)
 
-    # Agregar el nuevo archivo cifrado a licencias.json
+    # Agregar el nuevo archivo cifrado al diccionario
     nuevo_archivo = {
-        "nombre": nombre_sucio,
-        "encriptado": True,
-        "iv": byts_to_int(iv),  # Guardar el IV como entero
-        "k": byts_to_int(k)
+        "Nombre": nombre_sucio,
+        "Encriptado": 'True',
+        "IV": byts_to_int(iv),  # Guardar el IV como entero
+        "K": byts_to_int(k)
     }
-    listado['archivos'].append(nuevo_archivo)
+    diContenidos['archivos'].append(nuevo_archivo)
 
-    # Actualizar licencias.json y el indice
-    actualizarLicenciasJSON(listado)
+    # Actualizar el índice
+    actualizarLicenciasJSON(diContenidos)
 
     log(f"Archivo {nombre_input} encriptado y guardado como {nombre_sucio}")
 
-def decrypt(nombre_input: str,nombre_limpio:str)->None:
+
+def decrypt(nombre_input: str, nombre_limpio: str, diContenidos: dict) -> None:
     """
     Desencripta el archivo de imagen.
 
@@ -193,21 +153,18 @@ def decrypt(nombre_input: str,nombre_limpio:str)->None:
         with open(f"contenido/{nombre_input}", "rb") as archivo_encriptado:
             x = archivo_encriptado.read()  # Lee el archivo en bytes
 
-        # Obtener el IV de licencias.json
-        with open("licencias.json", 'r') as file:
-            listado = json.load(file)
-
-        # Buscar el archivo original en el JSON
+        # Buscar el archivo original en el diccionario
         archivo_encontrado = None
-        for archivo in listado['archivos']:
-            if archivo['nombre'] == nombre_input:
+        for archivo in diContenidos['archivos']:
+            if archivo['Nombre'] == nombre_input:
                 archivo_encontrado = archivo
                 break
 
-        iv = archivo_encontrado["iv"]
-        iv = int_to_byts(iv,16)
-        k = archivo_encontrado["k"]
-        k = int_to_byts(k,16)
+        iv = archivo_encontrado["IV"]
+        iv = int_to_byts(iv, 16)
+        k = archivo_encontrado["K"]
+        k = int_to_byts(k, 16)
+        
         # Verificar el tamaño del IV
         if len(iv) == 16:
             print("IV es válido para el cifrado.")
@@ -233,107 +190,55 @@ def decrypt(nombre_input: str,nombre_limpio:str)->None:
         with open(f"contenido/{nombre_limpio}", "wb") as archivo_descifrado_output:
             archivo_descifrado_output.write(archivo_descifrado)
 
-        # Agregar el nuevo archivo cifrado a licencias.json
+        # Agregar el nuevo archivo desencriptado al diccionario
         nuevo_archivo = {
-            "nombre": nombre_limpio,
-            "encriptado": False,
-            "iv": byts_to_int(iv),  # Guardar el IV como entero
-            "k": byts_to_int(k)  # Guardar el IV como entero
+            "Nombre": nombre_limpio,
+            "Encriptado": 'False',
+            "IV": byts_to_int(iv),  # Guardar el IV como entero
+            "K": byts_to_int(k)  # Guardar el K como entero
         }
-        listado['archivos'].append(nuevo_archivo)
+        diContenidos['archivos'].append(nuevo_archivo)
 
-        # Actualizar licencias.json y el indice
-        actualizarLicenciasJSON(listado)
+        # Actualizar el índice
+        actualizarLicenciasJSON(diContenidos)
 
         log(f"Archivo {nombre_input} desencriptado y guardado como {nombre_limpio}")
 
     except Exception as e:
         print(f"Ha ocurrido un error al desencriptar el archivo: {e}")
 
-def actualizarLicenciasJSON(listado) -> None:
-    """
-    Actualiza el archivo JSON de licencias con el objeto listado,
-    asegurando que no haya archivos repetidos.
-
-    listado (objeto): Objeto de Python con los datos de nombre, encriptado y iv de los archivos
-    """
-    # Verificar y eliminar archivos repetidos, dejando solo el más reciente
-    archivos_vistos = {}
-    for archivo in listado['archivos']:
-        archivos_vistos[archivo['nombre']] = archivo  # Sobrescribir con el último archivo encontrado
-
-    # Reemplazar el listado con los archivos actualizados (sin duplicados)
-    listado['archivos'] = list(archivos_vistos.values())
-
-    # Guardar el estado actualizado en el archivo JSON
-    with open("licencias.json", 'w') as file:
-        json.dump(listado, file, indent=4)
-
-    actualizarIndex()
-
-def actualizarIndex()->dict:
-    """
-    Crea un indice del contenido del servidor a partir del JSON de licencias.
-    Returns:
-        dict: Diccionario con el nombre del archivo como clave y el estado de encriptación como valor.
-    """
-    global index_encriptacion
-    try:
-        with open("licencias.json", 'r', encoding='utf-8') as f:
-            data = json.load(f)
-        
-        res_dict = {}
-        for archivo in data.get("archivos", []):
-            nombre = archivo.get("nombre", "") # "" es el valor predeterminado 
-            encriptado = archivo.get("encriptado", False) # False es el valor predeterminado
-            res_dict[nombre] = encriptado
-        
-        index_encriptacion = res_dict
-    except Exception as e:
-        print(f"Error al procesar el JSON licencias.json: {str(e)}")
-
-
+# Crea el diccionario de las licencias y contenidos
+diContenidos=getdiContenido()
 
 # Ruta a la carpeta 'contenido' donde están guardados los archivos
 ruta_contenido = 'contenido'
 
-def leer_json(ruta)->dict:
-    """Abre el archivo JSON, lo lee y lo carga en un diccionario
+# Richichi te he cambiado esta funcion nose si la utilizaras o klk pero creo que deberia estar adaptada
+def verificar_archivos(diContenidos, carpeta) -> None:
+    """Recorre el diccionario y comprueba que exista el archivo y te dice si es encriptable
     
     Args:
-        ruta (str): La ruta del archivo
-    
-    Returns:
-        dict: El contenido del archivo JSON como un diccionario
-    """
-    with open(ruta, 'r') as file:
-        return json.load(file)
-
-def verificar_archivos(json_data, carpeta)->None:
-    """Recorre el archivo JSON y comprueba que exista el archivo y te dice si es es encriptable
-    #cuando tengamos mas cosas hechas podemos enlazarlo bien
-    
-    Args:
-        json_data (dict): El diccionario que contiene la información de los archivos
+        diContenidos (dict): El diccionario que contiene la informacion de los archivos
         carpeta (str): La ruta de la carpeta donde se encuentran los archivos
     Returns:
         None
     """
     archivos_en_carpeta = os.listdir(carpeta)
     
-    # Recorre cada archivo en el JSON y verifica si existe en la carpeta
-    for archivo_info in json_data['archivos']:
-        archivo_nombre = archivo_info['nombre']
-        encriptable = archivo_info['encriptable']
-        vector = archivo_info.get('iv', '')
-        encriptado = archivo_info['encriptado']
-        k = archivo_info.get('k', '')
+    # Recorre cada archivo en el diccionario y verifica si existe en la carpeta
+    for archivo_info in diContenidos['archivos']:
+        archivo_nombre = archivo_info['Nombre']
+        encriptable = archivo_info['Encriptado'] == 'True'  # Verificar si es encriptable (basado en si está encriptado)
+        vector = archivo_info.get('IV', '')
+        encriptado = archivo_info['Encriptado']
+        k = archivo_info.get('K', '')
         
-        # Verifica si el archivo esta presente en la carpeta 'contenido'
+        # Verifica si el archivo está presente en la carpeta 'contenido'
         if archivo_nombre in archivos_en_carpeta:
-            print(f"El archivo '{archivo_nombre}' esta en la carpeta. Encriptable: {encriptable}. iv: {vector} Encriptado: {encriptado}. k: {k}")
+            print(f"El archivo '{archivo_nombre}' está en la carpeta. Encriptable: {encriptable}. IV: {vector} Encriptado: {encriptado}. K: {k}")
         else:
-            print(f"El archivo '{archivo_nombre}'no se encuentra en la carpeta.")
+            print(f"El archivo '{archivo_nombre}' no se encuentra en la carpeta.")
+
 
 
 
@@ -372,47 +277,48 @@ def comprueba_firma(firma, publica, valor_hash):
     else:
         log('Firma invalida, mensaje corrupto')
 
-def sacarIV(sock: socket,mensaje_rx: str)->None:
+def sacarIV(sock: socket, mensaje_rx: str, diContenidos: dict) -> None:
     """
-    Itera sobre los archivos y manda su VI
+    Itera sobre los archivos y manda su IV.
 
     sock (Socket): Socket del cliente que estamos tratando
     mensaje_rx (str): Nombre del archivo a desencriptar
     """
     # Generamos la clave RSA
-    k_rsa = os.urandom(16) # Generamos las claves que vamos a usar para encriptar en CTR las claves de los contenidos
+    k_rsa = os.urandom(16)  # Generamos las claves que vamos a usar para encriptar en CTR las claves de los contenidos
     IV_rsa = os.urandom(16)
 
     msj = mensaje_rx.split("-")
     print(msj)
 
     # Encriptamos la clave RSA
-    k_pub = msj[1] # Recibimos la clave pública como string
-    k_pub = [int(num) for num in k_pub.strip("[]").split(",")] # Pasamos de string a lista con los elementos [n,e]
-    k_rsa_encrypt = pow(byts_to_int(k_rsa),k_pub[1],k_pub[0]) # Encriptado la clave k_rsa que vamos a enviar
-    datos_json = leer_json("licencias.json")
-    for archivo in datos_json.get('archivos', []):
+    k_pub = msj[1]  # Recibimos la clave pública como string
+    k_pub = [int(num) for num in k_pub.strip("[]").split(",")]  # Pasamos de string a lista con los elementos [n, e]
+    k_rsa_encrypt = pow(byts_to_int(k_rsa), k_pub[1], k_pub[0])  # Encriptado la clave k_rsa que vamos a enviar
+    
+    for archivo in diContenidos.get('archivos', []):
         print(f"MSJ 0 {msj[0]}")
-        print(f"Archivo[nombre] {archivo['nombre'] }")
-        if archivo['nombre'] == msj[0]:
-            print(f"EN EL IF {archivo['nombre'] }")
-            k = archivo.get("k")
-            clave_c = archivo.get("iv")
+        print(f"Archivo[nombre] {archivo['Nombre']}")
+        if archivo['Nombre'] == msj[0]:
+            print(f"EN EL IF {archivo['Nombre']}")
+            k = archivo.get("K")
+            clave_c = archivo.get("IV")
             print(clave_c)
             # clave_c es un string
             print("Clave_c: ", clave_c)
             if not k:
                 sock.send("El archivo no está encriptado\n".encode())
-                log(f"El archivo solicitado {msj[0]} no esta cifrado")
+                log(f"El archivo solicitado {msj[0]} no está cifrado")
             else:
-                aesCipherCTR = Cipher(algorithms.AES(k_rsa),modes.CTR(IV_rsa))
+                aesCipherCTR = Cipher(algorithms.AES(k_rsa), modes.CTR(IV_rsa))
                 aesEncryptorCTR = aesCipherCTR.encryptor()
-                k_encrypt = aesEncryptorCTR.update(int_to_byts(k,16))
+                k_encrypt = aesEncryptorCTR.update(int_to_byts(k, 16))
                 print("pasamos")
                 mensaje_iv = f"Vector: {clave_c} Clave: {byts_to_int(k_encrypt)} K_RSA: {k_rsa_encrypt} IV_RSA: {byts_to_int(IV_rsa)}"
                 sock.send(str(mensaje_iv).encode())
 
-                log(f"El archivo solicitado {msj[0]} si está cifrado")
+                log(f"El archivo solicitado {msj[0]} sí está cifrado")
+
 
 
 #Hacemos la función principal del server
@@ -456,7 +362,6 @@ def server():
         exitear()
 
 
-
 # Interfaz servidor
 def serverInterface():
     """Función de consola para controlar el servidor."""
@@ -475,11 +380,11 @@ def serverInterface():
 
             elif consola.startswith("encrypt"):
                 _, nombre_limpio, nombre_sucio = consola.split()
-                encrypt(nombre_limpio, nombre_sucio)
+                encrypt(nombre_limpio, nombre_sucio,diContenidos)
 
             elif consola.startswith("decrypt"):
                 _, nombre_limpio, nombre_sucio = consola.split()
-                decrypt(nombre_limpio, nombre_sucio)
+                decrypt(nombre_limpio, nombre_sucio,diContenidos)
             else:
                 log("\nComando erroneo\n")
 
@@ -488,7 +393,7 @@ def serverInterface():
         exitear()
                  
 #Se crean los hilos
-actualizarIndex()
+actualizarIndex(diContenidos)
 hilo_server = Thread(target=server)
 hilo_serverInterface = Thread(target=serverInterface)
 
@@ -499,7 +404,7 @@ hilo_serverInterface.start()
 # Esperamos a que ambos hilos terminen
 try:
     iniciar_log()
-    actualizarIndex()
+    actualizarIndex(diContenidos)
     hilo_server.join()
     hilo_serverInterface.join()
 except KeyboardInterrupt as e:

@@ -6,28 +6,12 @@ from datetime import datetime
 from threading import Thread, Event
 import select
 import os
-import json
+from funciones import *
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 
 index_encriptacion = {}
 from cryptography.hazmat.primitives import padding
 
-# Funciones interfaz
-def log(msj: str) -> None:
-    """Guarda un log con el tiempo y el mensaje en un archivo de texto.
-    Args:
-        msj (str): Mensaje a guardar en el log
-    Returns:
-        None
-    """
-    try:
-        with open("logs/log.txt", "a") as log_file:
-            log_entry = f"{datetime.now().strftime('%H:%M:%S')} - {msj}"
-            print(log_entry)
-            log_file.write(f"{log_entry}\n")
-    except FileNotFoundError:
-        print("ERROR: El archivo log.txt no existe y no se puede acceder.")
-        raise  
 
 def iniciar_log() -> None:
     """Escribe un mensaje de inicio en el log al iniciar el servidor anadiendo una linea en blanco si ya existe el archivo.
@@ -107,67 +91,23 @@ def exitear():
     log("Servidor detenido por exitear()")
     stop_event.set()  # Señaliza que el servidor debe detenerse
 
-def actualizarIndex()->dict:
-    """
-    Crea un indice del contenido del servidor a partir del JSON de licencias.
-    Returns:
-        dict: Diccionario con el nombre del archivo como clave y el estado de encriptación como valor.
-    """
-    global index_encriptacion
-    try:
-        with open("licencias.json", 'r', encoding='utf-8') as f:
-            data = json.load(f)
-        
-        res_dict = {}
-        for archivo in data.get("archivos", []):
-            nombre = archivo.get("nombre", "") # "" es el valor predeterminado 
-            encriptado = archivo.get("encriptado", False) # False es el valor predeterminado
-            res_dict[nombre] = encriptado
-        
-        index_encriptacion = res_dict
-    except Exception as e:
-        print(f"Error al procesar el JSON licencias.json: {str(e)}")
-
-def actualizarLicenciasJSON(listado) -> None:
-    """
-    Actualiza el archivo JSON de licencias con el objeto listado,
-    asegurando que no haya archivos repetidos.
-
-    listado (objeto): Objeto de Python con los datos de nombre, encriptado y iv de los archivos
-    """
-    # Verificar y eliminar archivos repetidos, dejando solo el más reciente
-    archivos_vistos = {}
-    for archivo in listado['archivos']:
-        archivos_vistos[archivo['nombre']] = archivo  # Sobrescribir con el último archivo encontrado
-
-    # Reemplazar el listado con los archivos actualizados (sin duplicados)
-    listado['archivos'] = list(archivos_vistos.values())
-
-    # Guardar el estado actualizado en el archivo JSON
-    with open("licencias.json", 'w') as file:
-        json.dump(listado, file, indent=4)
-
-    actualizarIndex()
-
-def checkEncriptacion(nombre_input:str):
-    with open("licencias.json", 'r') as file:
-        listado = json.load(file)
-
-    # Buscar el archivo original en el JSON
+def checkEncriptacion(nombre_input: str, diContenidos: dict):
+    # Buscar el archivo original en el diccionario
     archivo_encontrado = None
-    for archivo in listado['archivos']:
-        if archivo['nombre'] == nombre_input:
+    for archivo in diContenidos['archivos']:
+        if archivo['Nombre'] == nombre_input:
             archivo_encontrado = archivo
             break
 
     # Si no se encuentra el archivo original, avisar
     if not archivo_encontrado:
-        raise FileNotFoundError(f"El archivo {nombre_input} no se encuentra en licencias.json")
+        raise FileNotFoundError(f"El archivo {nombre_input} no se encuentra en el diccionario de contenidos")
 
-    if archivo_encontrado["encriptado"]:
+    if archivo_encontrado["Encriptado"] == 'True':
         return "True".encode()
     else:
         return "False".encode()
+
     
 
 # Configuracion de conexion
@@ -212,6 +152,7 @@ def serverInterface():
         log("Entrada cerrada.")
         exitear()
 
+diContenidos=getdiContenido()
 
 # Bucle principal del servidor
 def server():
@@ -282,7 +223,7 @@ hilo_serverInterface.start()
 # Esperamos a que ambos hilos terminen
 try:
     iniciar_log()
-    actualizarIndex()
+    actualizarIndex(diContenidos)
     hilo_server.join()
     hilo_serverInterface.join()
 except KeyboardInterrupt as e:
