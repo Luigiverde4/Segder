@@ -12,12 +12,6 @@ import os
 
 index_encriptacion = {}
 
-#Generamos las claves necesarias para comprobar la firma digital
-exponente = 65537
-tam = 2048
-privada = rsa.generate_private_key(exponente, tam)
-publica = privada.public_key()
-
 #Ahora producimos el hash
 mensaje_bits = b"Firma digital del mensaje"
 valor_hash = int.from_bytes(hashlib.sha256(mensaje_bits).digest(), byteorder = 'big')
@@ -359,9 +353,9 @@ def comprueba_firma(firma, publica, valor_hash):
     valor_hash: El valor que calculamos del hash, nos servira para comprobar la veracidad del mensaje
     """
     #Genera los números públicos para el descifrado
-    numeros_publicos = publica.public_numbers()
-    e = numeros_publicos.e
-    n = numeros_publicos.n
+    publica = [int(num) for num in publica.strip("[]").split(",")]
+    n = publica[0]
+    e= publica[1]
     
     firma_entero = int(firma)
     
@@ -378,15 +372,18 @@ def sacarIV(sock: socket,mensaje_rx: str)->None:
     sock (Socket): Socket del cliente que estamos tratando
     mensaje_rx (str): Nombre del archivo a desencriptar
     """
+    # Generamos la clave RSA
     k_rsa = os.urandom(16) # Generamos las claves que vamos a usar para encriptar en CTR las claves de los contenidos
     IV_rsa = os.urandom(16)
 
     msj = mensaje_rx.split("-")
     print(msj)
-    k_pub = msj[2] # Recibimos la clave pública como string
+
+    # Encriptamos la clave RSA
+    k_pub = msj[1] # Recibimos la clave pública como string
     k_pub = [int(num) for num in k_pub.strip("[]").split(",")] # Pasamos de string a lista con los elementos [n,e]
-    print("Número gigante:",byts_to_int(k_rsa))
     k_rsa_encrypt = pow(byts_to_int(k_rsa),k_pub[1],k_pub[0]) # Encriptado la clave k_rsa que vamos a enviar
+
     for archivo in datos_json.get('archivos', []):
         if archivo['nombre'] == msj[0]:
             k = archivo.get("k")
@@ -423,10 +420,10 @@ def server():
                     try:
                         mensaje_rx = sock.recv(2048).decode()
                         if mensaje_rx:
-                            mensaje, firma = mensaje_rx.split(" ", 1)
-                            log(f"Mensaje recibido del cliente {clientes[sock]}: {mensaje}")
+                            mensaje, publica, firma = mensaje_rx.split("-")
+                            log(f"Archivo pedido  {clientes[sock]}: {mensaje}")
                             comprueba_firma(firma, publica, valor_hash)
-                            sacarIV(sock,mensaje)
+                            sacarIV(sock,mensaje_rx)
 
                         else:
                             log(f"Cliente {clientes[sock]} desconectado")
