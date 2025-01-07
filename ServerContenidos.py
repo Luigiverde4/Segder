@@ -8,6 +8,7 @@ import select
 import os
 import json
 from PIL import Image, ImageDraw, ImageFont
+import random
 
 index_encriptacion = {}
 
@@ -58,6 +59,30 @@ def mostrarIndex() -> str:
     return final
 
 
+
+def generar_posicion_aleatoria(ancho: int, alto: int, margen: int = 25) -> tuple[int, int]:
+    """
+    Genera una posición aleatoria para la marca de agua dentro de los límites de la imagen.
+    
+    Args:
+        ancho (int): Ancho de la imagen.
+        alto (int): Alto de la imagen.
+        margen (int): Margen mínimo desde los bordes de la imagen.
+        
+    Returns:
+        tuple[int, int]: Coordenadas (x, y) de la posición aleatoria.
+    """
+    # la hora como generador de seed para que vaya cambiando
+    ahora = datetime.now()
+    random.seed(ahora.second + ahora.microsecond)
+    
+    # Calcular pos en el area valida
+    x = random.randint(margen, ancho - margen)
+    y = random.randint(margen, alto - margen)
+    
+    return x, y
+
+
 def MdA(nombre_limpio: str, id: str) -> None:
     """
     Añade una marca de agua a una imagen para luego encriptarla,
@@ -65,8 +90,8 @@ def MdA(nombre_limpio: str, id: str) -> None:
     
     Args:
         nombre_limpio (str): Nombre del archivo sin encriptar al que agregar la marca de agua.
-        id (str): ID del  que pide la imagen
-    """      
+        id (str): ID del que pide la imagen.
+    """
     archivo = Image.open(f"contenido/{nombre_limpio}")
     editada = ImageDraw.Draw(archivo)
 
@@ -75,11 +100,12 @@ def MdA(nombre_limpio: str, id: str) -> None:
     fuente = ImageFont.truetype('arial.ttf', 25)
     ancho, alto = archivo.size
 
-    bbox = editada.textbbox((0,0), marca, font = fuente)
-    texto_ancho, texto_alto = bbox[2] - bbox[0], bbox[3] - bbox[1]
-    posicion = (ancho - texto_ancho - 50, alto - texto_alto - 50)
+    # Generar posición aleatoria
+    texto_ancho, texto_alto = editada.textbbox((0, 0), marca, font=fuente)[2:]
+    posicion = generar_posicion_aleatoria(ancho - texto_ancho, alto - texto_alto)
 
-    editada.text(posicion, marca, font=fuente, fill=(0,0,0))
+    # Dibujar la marca de agua
+    editada.text(posicion, marca, font=fuente, fill=(0, 0, 0))
     
     # Guardar el fichero con la marca de agua
     archivo.save(f"contenido/MdA_{nombre_limpio}")

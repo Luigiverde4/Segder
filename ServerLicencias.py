@@ -2,10 +2,10 @@ from socket import *
 from datetime import datetime
 from threading import Thread, Event
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
-from cryptography.hazmat.primitives.asymmetric import rsa
 from PIL import Image, ImageDraw, ImageFont
 import hashlib
-
+import random
+import datetime
 import json
 import select
 import os
@@ -75,6 +75,29 @@ def int_to_byts(i, length)->bytes:
     """
     return i.to_bytes(length, byteorder="big")
 
+def generar_posicion_aleatoria(ancho: int, alto: int, margen: int = 25) -> tuple[int, int]:
+    """
+    Genera una posición aleatoria para la marca de agua dentro de los límites de la imagen.
+    
+    Args:
+        ancho (int): Ancho de la imagen.
+        alto (int): Alto de la imagen.
+        margen (int): Margen mínimo desde los bordes de la imagen.
+        
+    Returns:
+        tuple[int, int]: Coordenadas (x, y) de la posición aleatoria.
+    """
+    # la hora como generador de seed para que vaya cambiando
+    ahora = datetime.now()
+    random.seed(ahora.second + ahora.microsecond)
+    
+    # Calcular pos en el area valida
+    x = random.randint(margen, ancho - margen)
+    y = random.randint(margen, alto - margen)
+    
+    return x, y
+
+
 def MdA(nombre_limpio: str, nombre_sucio: str,marca: str) -> None:
     """
     Añade una marca de agua a una imagen para luego encriptarla,
@@ -95,7 +118,7 @@ def MdA(nombre_limpio: str, nombre_sucio: str,marca: str) -> None:
     marca = os.urandom(8)
     bbox = editada.textbbox((0,0), marca, font = fuente)
     texto_ancho, texto_alto = bbox[2] - bbox[0], bbox[3] - bbox[1]
-    posicion = (ancho - texto_ancho - 50, alto - texto_alto - 50)
+    posicion = generar_posicion_aleatoria(ancho - texto_ancho, alto - texto_alto)
 
     editada.text(posicion, marca, font=fuente, fill=(0,0,0))
     
