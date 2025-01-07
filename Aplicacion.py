@@ -5,8 +5,27 @@ from cryptography.hazmat.primitives import padding
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 from cryptography.hazmat.primitives.asymmetric import rsa
 import hashlib
+from cryptography.hazmat.primitives.asymmetric import rsa
+from cryptography.hazmat.primitives import serialization
 
-k = b'\x0f\x02\xf8\xcc#\x99\xe9<7[3\xc9T\x0b\xd5I'
+
+def generar_claves():
+    """
+    Genera una clave pública y una clave privada
+    """
+    kpr = rsa.generate_private_key(65537,2048)
+    k_pub = kpr.public_key()
+    private_number = kpr.private_numbers()
+    
+    public_numbers = k_pub.public_numbers()
+    n = public_numbers.n
+    e = public_numbers.e
+    
+    d = private_number.d
+    
+    return d,[n,e]
+
+
 
 #Generamos las claves necesarias para la firma digital
 exponente = 65537
@@ -16,6 +35,13 @@ privada = rsa.generate_private_key(exponente, tam)
 def int_to_byts(i, length):
     return i.to_bytes(length, byteorder="big")
 
+def byts_to_int(b)->int:
+    """
+    Pasa bytes a int
+
+    b (bytes): Clave VI a pasar de int a bytes
+    """
+    return int.from_bytes(b,byteorder="big")
 # Licencias
 def decrypt(nombre_archivo:str):
     """
@@ -36,16 +62,24 @@ def decrypt(nombre_archivo:str):
             x = archivo_encriptado.read()  # Lee el archivo completo en bytes
  
         # Obtener el IV desde el servidor
-        iv = pedirLicencias(mensaje_tx)
+        iv,k = pedirLicencias(mensaje_tx)
         iv = iv.decode()  # IV como int
+        k = k.decode()  # IV como int
         iv = int_to_byts(int(iv), 16)
+        k = int_to_byts(int(k), 16)
         print("IV decodificado:", iv)
+        print("k decodificado:", k)
 
         # Verificar el tamaño del IV
         if len(iv) == 16:
             print("IV es válido para el cifrado.")
         else:
             print(f"Error: IV no tiene 16 bytes, tiene {len(iv)} bytes.")
+            return
+        if len(k) == 16:
+            print("k es válido para el cifrado.")
+        else:
+            print(f"Error: k no tiene 16 bytes, tiene {len(k)} bytes.")
             return
 
         # Crear el cifrador AES en modo CTR con el IV
@@ -106,28 +140,42 @@ def pedirLicencias(mensaje_tx:str)->None:
     mensaje_tx = f"{archivo} f{firma}"
 
     # Pedir el IV
+    # Generamos las claves
+    kpr,k_pub = generar_claves()
+    print("Clave pública:",k_pub)
+    mensaje_tx = f"{archivo}-Clave:-{k_pub}"
     sl.send(mensaje_tx.encode())
-    iv = recibirLicencias()
-    return iv
+    iv,k = recibirLicencias(kpr,k_pub[0])
+    return iv,k
 
-def recibirLicencias() -> None:
-    """Funcion para recibir las claves de descifrado"""
+def recibirLicencias(kpr,n) -> None:
+    """Funcion para recibir las claves de descifrado
+    Arg: kpr: Clave privada para descifrar el mensaje recibido
+         n: Modulo para descifrar el mensaje recibido
+    """
     try:
         mensaje_rx = sl.recv(2048).decode()
-
         if not mensaje_rx:
             print("Error: No se recibió respuesta del servidor de licencias")
-
         else:
-            mensaje = mensaje_rx
-            respuesta = mensaje.split()
-            if len(respuesta) == 2:
-                print("Clave recibida")
-                iv = respuesta[1].encode()
-                return iv
-            else:
-                print(mensaje_rx)
+            respuesta = mensaje_rx.split() # Recibimos la respuesta en una lista: la posición 1 es la IV para desencriptar, la posición 3 es la clave para desencriptar encriptada con AES
+                                           # la posición 5 es la clave con la que se ha encriptado en AES la clave k, encriptada con RSA y la posición 7 es la IV usada para encriptar con AES la clave k
+            k_rsa_encrypt = int(respuesta[5]) # Pasamos a int la k_rsa encriptada
+            IV_rsa = int_to_byts(int(respuesta[7]),16) # Obtenemos en bytes la IV_rsa
+            k_rsa = int_to_byts((pow(k_rsa_encrypt,kpr,n)),16) # Descencritamos la k_rsa con la clave privada y el modulo n, y la pasamos a bytes
 
+            aesCipherCTR = Cipher(algorithms.AES(k_rsa),modes.CTR(IV_rsa))
+            aesDecryptorCTR = aesCipherCTR.decryptor()
+            k = aesDecryptorCTR.update(int_to_byts(int(respuesta[3]),16)) # Desencriptamos la k para desencriptar contenido y la pasamos a bytes
+            if len(respuesta) == 8:
+                print("Clave recibida")
+                iv = respuesta[1].encode() 
+                k = str(byts_to_int(k)).encode() # Pasamos la clave a int y hacemos encode()
+                print(iv,k)
+                return iv,k
+            else:
+                print("cuidadin")
+                print(mensaje_rx)
     except Exception as e:
         print(f"Ha ocurrido un error al recibir la respuesta del servidor: {e}")
 

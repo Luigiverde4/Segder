@@ -1,14 +1,16 @@
 {
     "archivos": [
         {
-            "nombre": "a.bmp",
+            "nombre": "badbu.jpg",
             "encriptado": false,
-            "iv": ""
+            "iv": "",
+            "k": ""
         },
         {
-            "nombre": "b.bmp",
+            "nombre": "badbu2.jpg",
             "encriptado": true,
-            "iv": 144968494715892178255244645267058491404
+            "iv": 268828013895284753511052994770709561309,
+            "k": 228417675413340292178606141118224245087
         }
     ]
 }
