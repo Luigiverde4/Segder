@@ -145,21 +145,28 @@ def desencriptarContenido(k,iv,nombre_archivo):
 if __name__ == "__main__":
     print("CDM INICIADO")
     while True:
-        mensaje_rx = sua.recv(2048).decode()
-        if mensaje_rx:
-            print(f"Mensaje recibido del CDM {mensaje_rx}")
+        try:
+            mensaje_rx = sua.recv(2048).decode()
+            if mensaje_rx:
+                print(f"Mensaje recibido del CDM {mensaje_rx}")
 
-            if mensaje_rx.startswith("LICENCIA"):
-                # El formato es "LICENCIA fulanito"
-                nombreArchivoParaLicencia = mensaje_rx.split(" ")[1]
-                print(f"Licencia pedida para: {nombreArchivoParaLicencia}")
+                if mensaje_rx.startswith("LICENCIA"):
+                    # El formato es "LICENCIA fulanito"
+                    nombreArchivoParaLicencia = mensaje_rx.split(" ")[1]
+                    print(f"Licencia pedida para: {nombreArchivoParaLicencia}")
 
-                # Sacar iv, k
-                iv, k = pedirLicencias(nombreArchivoParaLicencia)
-                iv = iv.decode()  # IV como int
-                k = k.decode()  # k como int
-                iv = int_to_byts(int(iv), 16) # IV como bytes
-                k = int_to_byts(int(k), 16) # K como bytes
-                
-                # Desencriptar el contenido
-                desencriptarContenido(k,iv,nombreArchivoParaLicencia)
+                    # Sacar iv, k
+                    iv, k = pedirLicencias(nombreArchivoParaLicencia)
+                    iv = iv.decode()  # IV como int
+                    k = k.decode()  # k como int
+                    iv = int_to_byts(int(iv), 16) # IV como bytes
+                    k = int_to_byts(int(k), 16) # K como bytes
+                    
+                    # Desencriptar el contenido
+                    desencriptarContenido(k,iv,nombreArchivoParaLicencia)
+        except KeyboardInterrupt:
+            print("\nInterrupción manual detectada. Cerrando conexión...")
+            sua.close()
+            exit()
+        except Exception as e:
+            print(f"Error inesperado: {e}")

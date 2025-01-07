@@ -204,6 +204,14 @@ scdm, addr = s_cdm.accept()
 print("Conexion con el CDM!") 
 # Iniciar la gestion de comandos
 if __name__ == "__main__":
-    while True:
-        mensaje_tx = input("\nIntroduce tu comando: ")
-        gestionar_comandos()
+    try:
+        while True:
+            mensaje_tx = input("\nIntroduce tu comando: ")
+            gestionar_comandos()
+    except KeyboardInterrupt:
+        print("\nInterrupción manual detectada. Cerrando conexión...")
+        sl.close()
+        sc.close()
+        scdm.close()
+    except Exception as e:
+        print(f"Error inesperado: {e}")
