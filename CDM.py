@@ -1,5 +1,7 @@
 from socket import socket, AF_INET, SOCK_STREAM
-import os
+import hashlib
+from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+from cryptography.hazmat.primitives.asymmetric import rsa
 
 # SOCKET CON LA UA
 dir_IP_UA = '127.0.0.1'  # Dirección IP de la UA
@@ -12,118 +14,152 @@ sua = socket(AF_INET, SOCK_STREAM)
 dir_socket_UA = (dir_IP_UA, puerto_UA)
 sua.connect(dir_socket_UA)
 
-# Comandos disponibles
-comandos = {
-    "VER": "Lista los contenidos disponibles en el servidor de contenidos",
-    "DESCARGAR {nombre del archivo}": "Solicita la descarga de un archivo al servidor de contenidos",
-    "FIN": "Cierra la aplicación",
-    "CLS": "Limpia la consola",
-}
+# PROCESADO 
 
-max_len = max(len(comando) for comando in comandos)
+def int_to_byts(i, length):
+    return i.to_bytes(length, byteorder="big")
 
-def interactuar_con_UA(mensaje_tx:str)->None:
+def byts_to_int(b)->int:
     """
-    Manda comandos a la UA y procesa las respuestas recibidas.
+    Pasa bytes a int
 
-    mensaje_tx (str): Comando que se manda a la UA.
+    b (bytes): Clave VI a pasar de int a bytes
+    """
+    return int.from_bytes(b,byteorder="big")
+
+
+# LICENCIAS
+
+def recibirLicencias(kpr,n) -> None:
+    """Funcion para recibir las claves de descifrado
+    Arg: kpr: Clave privada para descifrar el mensaje recibido
+         n: Modulo para descifrar el mensaje recibido
     """
     try:
-        # Enviar el comando a la UA
-        sua.send(mensaje_tx.encode())
-
-        # Esperar y recibir respuesta de la UA
-        mensaje_rx = sua.recv(4096).decode()
+        print("En recibir licencias")
+        mensaje_rx = sua.recv(2048).decode()
+        print("Recibido el mensaje con la licencia de la UA")
 
         if not mensaje_rx:
-            print("Error: No se recibió respuesta de la UA.")
-            return
-
-        # Procesar respuestas específicas
-        if mensaje_tx.startswith("VER"):
-            ver(mensaje_rx)
-        elif mensaje_tx.startswith("DESCARGAR"):
-            procesar_descarga(mensaje_tx, mensaje_rx)
+            print("Error: No se recibió respuesta del servidor de licencias")
         else:
-            print(mensaje_rx)
+            respuesta = mensaje_rx.split() # Recibimos la respuesta en una lista: la posición 1 es la IV para desencriptar, la posición 3 es la clave para desencriptar encriptada con AES
+                                           # la posición 5 es lañ clave con la que se ha encriptado en AES la clave k, encriptada con RSA y la posición 7 es la IV usada para encriptar con AES la clave k
+            k_rsa_encrypt = int(respuesta[5]) # Pasamos a int la k_rsa encriptada
+            IV_rsa = int_to_byts(int(respuesta[7]),16) # Obtenemos en bytes la IV_rsa
+            k_rsa = int_to_byts((pow(k_rsa_encrypt,kpr,n)),16) # Descencritamos la k_rsa con la clave privada y el modulo n, y la pasamos a bytes
 
+            aesCipherCTR = Cipher(algorithms.AES(k_rsa),modes.CTR(IV_rsa))
+            aesDecryptorCTR = aesCipherCTR.decryptor()
+            k = aesDecryptorCTR.update(int_to_byts(int(respuesta[3]),16)) # Desencriptamos la k para desencriptar contenido y la pasamos a bytes
+            if len(respuesta) == 8:
+                print("Clave recibida")
+                iv = respuesta[1].encode() 
+                k = str(byts_to_int(k)).encode() # Pasamos la clave a int y hacemos encode()
+                # print(iv,k)
+                return iv,k
+            else:
+                print("cuidadin")
+                print(mensaje_rx)
     except Exception as e:
-        print(f"Error al interactuar con la UA: {e}")
+        print(f"Ha ocurrido un error al recibir la respuesta del servidor: {e}")
 
-def ver(mensaje_rx:(str))->None:
+def pedirLicencias(mensaje_tx:str)->None:
     """
-    Muestra los contenidos disponibles en el servidor.
-
-    mensaje_rx (str): Respuesta de la UA con los contenidos disponibles.
+        Gestionar si se descarga y recibir licencias del servidor de licencias
     """
-    print("\nContenidos disponibles:")
-    for contenido in mensaje_rx.split("\n"):
-        print(contenido)
+    # Coger el nombre del archivo que hemos pedido para pedir el IV
+    archivo = mensaje_tx
+    print(archivo)
+    # Pedir el IV
+    # Generamos las claves
+    kpr,k_pub = generar_claves()
+    firma=firmado(kpr,k_pub)
+    print("Clave pública:",k_pub)
+    mensaje_tx = f"{archivo}-{k_pub}-{firma}"
 
-def procesar_descarga(mensaje_tx, mensaje_rx):
+    print("\n Mensaje Pedir Licecncias enviado a la UA")
+    sua.send(mensaje_tx.encode())
+    iv,k = recibirLicencias(kpr,k_pub[0])
+    return iv,k
+
+def firmado(d,kpub):
     """
-    Procesa la descarga de un archivo solicitada a la UA.
-
-    Args:
-        mensaje_tx (str): Comando enviado a la UA para descargar un archivo.
-        mensaje_rx (str): Respuesta de la UA sobre el estado de la descarga.
-    Returns:
-        None
+    Genera un hash a partir del mensaje que vamos a mandar al servidor de licencias con la firma digital
+        Args:
+    mensaje: El mensaje que mandamos, será solamente el niombre del archivo del que solicitamos licencia
+    privada: La clave privada RSA, la cual se usa de base para encriptar el mensaje
     """
-    if mensaje_rx.startswith("200"):
-        print("Descarga completada y archivo procesado correctamente.")
-    elif mensaje_rx.startswith("400"):
-        print("Error: El archivo solicitado no existe en el servidor.")
-    elif mensaje_rx.startswith("204"):
-        print(mensaje_rx)
-    else:
-        print(f"Error desconocido: {mensaje_rx}")
+    #Generamos el hash con el mensaje de comprobación
+    mensaje_bits = b"Firma digital del mensaje"
+    hash_m = int.from_bytes(hashlib.sha256(mensaje_bits).digest(), byteorder = 'big')
+    n= kpub[0]
+    e=kpub[1]
+    
+    firma = pow(hash_m, d, n) #Usamos pow para sacar la firma
+    return firma
 
-def gestionar_comandos():
+def generar_claves():
     """
-    Gestiona la entrada del usuario y envía comandos a la UA.
-
-    Returns:
-        None
+    Genera una clave pública y una clave privada
     """
-    print("\nIntroduce INFO para obtener información sobre los comandos disponibles.")
+    kpr = rsa.generate_private_key(65537,2048)
+    k_pub = kpr.public_key()
+    private_number = kpr.private_numbers()
+    
+    public_numbers = k_pub.public_numbers()
+    n = public_numbers.n
+    # print("n",n)
+    e = public_numbers.e
+    
+    d = private_number.d
+    
+    return d,[n,e]
 
-    try:
-        if not mensaje_tx.strip():
-            print("Comando vacío. Intenta nuevamente.")
-            return
+# CONTENIDO
+def desencriptarContenido(k,iv,nombre_archivo):
+    """
+    k: Clave
+    iv: Clave IV
+    nombre_archivo: Nombre del archivo encriptado
+    """
+    # Cargar el archivo encriptado
+    with open(f"contenido_descargado/{nombre_archivo}", "rb") as archivo_encriptado:
+        datos_encriptados = archivo_encriptado.read()
 
-        # COMANDOS DE LA CONSOLA
-        elif mensaje_tx.upper() == "INFO":
-            print("\nComandos disponibles:")
-            for instruccion in comandos:
-                print(f"{instruccion.ljust(max_len)} - {comandos[instruccion]}")
-            return
+    print(f"Archivo {nombre_archivo} cargado")
 
-        # Limpiar la consola
-        elif mensaje_tx.upper() == "CLS":
-            os.system("cls" if os.name == "nt" else "clear")
-            return 
+    # Crear el cifrador AES en modo CTR con el IV
+    aes_cipher = Cipher(algorithms.AES(k), modes.CTR(iv))
+    decryptor = aes_cipher.decryptor()
+    datos_descifrados = decryptor.update(datos_encriptados) + decryptor.finalize()
 
-        # Finalizar el programa
-        elif mensaje_tx.upper() == "FIN":
-            print("Cerrando conexión con la UA y finalizando el programa...")
-            sua.sendall("FIN".encode())
-            sua.close()
-            return
+    with open(f"contenido_descargado/{nombre_archivo}", "wb") as archivo_descifrado:
+        archivo_descifrado.write(datos_descifrados)
 
-        else:
-            # COMANDOS DE LOS SERVIDORES
-            interactuar_con_UA(mensaje_tx)
-
-    except KeyboardInterrupt:
-        print("\nInterrupción manual detectada. Cerrando conexión...")
-        sua.close()
-    except Exception as e:
-        print(f"Error inesperado: {e}")
+    status = f"{nombre_archivo} desencriptado exitosamente." 
+    print(status)
+    sua.send(status.encode())
 
 # Iniciar la gestión de comandos
 if __name__ == "__main__":
+    print("CDM INICIADO")
     while True:
-        mensaje_tx = input("\nIntroduce tu comando: ")
-        gestionar_comandos()
+        mensaje_rx = sua.recv(2048).decode()
+        if mensaje_rx:
+            print(f"Mensaje recibido del CDM {mensaje_rx}")
+
+            if mensaje_rx.startswith("LICENCIA"):
+                # El formato es "LICENCIA fulanito"
+                nombreArchivoParaLicencia = mensaje_rx.split(" ")[1]
+                print(f"Licencia pedida para: {nombreArchivoParaLicencia}")
+
+                # Sacar iv, k
+                iv, k = pedirLicencias(nombreArchivoParaLicencia)
+                iv = iv.decode()  # IV como int
+                k = k.decode()  # k como int
+                iv = int_to_byts(int(iv), 16) # IV como bytes
+                k = int_to_byts(int(k), 16) # K como bytes
+                
+                # Desencriptar el contenido
+                desencriptarContenido(k,iv,nombreArchivoParaLicencia)
