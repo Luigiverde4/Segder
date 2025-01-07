@@ -49,12 +49,14 @@ def recibirLicencias(kpr,n) -> None:
          n: Modulo para descifrar el mensaje recibido
     """
     try:
+        print("En recibir licencias")
         mensaje_rx = sl.recv(2048).decode()
+        print("Recibido el mensaje")
         if not mensaje_rx:
             print("Error: No se recibió respuesta del servidor de licencias")
         else:
             respuesta = mensaje_rx.split() # Recibimos la respuesta en una lista: la posición 1 es la IV para desencriptar, la posición 3 es la clave para desencriptar encriptada con AES
-                                           # la posición 5 es la clave con la que se ha encriptado en AES la clave k, encriptada con RSA y la posición 7 es la IV usada para encriptar con AES la clave k
+                                           # la posición 5 es lañ clave con la que se ha encriptado en AES la clave k, encriptada con RSA y la posición 7 es la IV usada para encriptar con AES la clave k
             k_rsa_encrypt = int(respuesta[5]) # Pasamos a int la k_rsa encriptada
             IV_rsa = int_to_byts(int(respuesta[7]),16) # Obtenemos en bytes la IV_rsa
             k_rsa = int_to_byts((pow(k_rsa_encrypt,kpr,n)),16) # Descencritamos la k_rsa con la clave privada y el modulo n, y la pasamos a bytes
@@ -66,7 +68,7 @@ def recibirLicencias(kpr,n) -> None:
                 print("Clave recibida")
                 iv = respuesta[1].encode() 
                 k = str(byts_to_int(k)).encode() # Pasamos la clave a int y hacemos encode()
-                print(iv,k)
+                # print(iv,k)
                 return iv,k
             else:
                 print("cuidadin")
@@ -117,7 +119,7 @@ def generar_claves():
     
     public_numbers = k_pub.public_numbers()
     n = public_numbers.n
-    print("n",n)
+    # print("n",n)
     e = public_numbers.e
     
     d = private_number.d
@@ -148,12 +150,13 @@ def decrypt(nombre_archivo: str):
 
         # Obtener el IV desde el servidor
         iv,k = pedirLicencias(nombre_archivo)
+        print("IV decodificado:", iv)
+        print("k decodificado:", k)
         iv = iv.decode()  # IV como int
         k = k.decode()  # IV como int
         iv = int_to_byts(int(iv), 16)
         k = int_to_byts(int(k), 16)
-        print("IV decodificado:", iv)
-        print("k decodificado:", k)
+        
 
         # Crear el cifrador AES en modo CTR con el IV
         aes_cipher = Cipher(algorithms.AES(k), modes.CTR(iv))

@@ -75,26 +75,26 @@ def int_to_byts(i, length)->bytes:
     """
     return i.to_bytes(length, byteorder="big")
 
-def MdA(foto):
-    """
-    Añade una marca de agua a una fotografia
-    Args: foto, la ruta de acceso al archivo que se va a modificar
-    """      
+# def MdA(foto):
+#     """
+#     Añade una marca de agua a una fotografia
+#     Args: foto, la ruta de acceso al archivo que se va a modificar
+#     """      
 
-    archivo = Image.open(f"contenido/{foto}")
-    editada = ImageDraw.Draw(archivo)
+#     archivo = Image.open(f"contenido/{foto}")
+#     editada = ImageDraw.Draw(archivo)
     
-    #Parametros de la marca de agua
-    marca = "RJRC"
-    fuente = ImageFont.truetype('arial.ttf', 25)
-    ancho, alto = archivo.size
+#     #Parametros de la marca de agua
+#     marca = "RJRC"
+#     fuente = ImageFont.truetype('arial.ttf', 25)
+#     ancho, alto = archivo.size
     
-    bbox = editada.textbbox((0,0), marca, font = fuente)
-    texto_ancho, texto_alto = bbox[2] - bbox[0], bbox[3] - bbox[1]
-    posicion = (ancho - texto_ancho - 50, alto - texto_alto - 50)
+#     bbox = editada.textbbox((0,0), marca, font = fuente)
+#     texto_ancho, texto_alto = bbox[2] - bbox[0], bbox[3] - bbox[1]
+#     posicion = (ancho - texto_ancho - 50, alto - texto_alto - 50)
 
-    editada.text(posicion, marca, font=fuente, fill=(0,0,0))
-    archivo.save(f"contenido/{foto}")
+#     editada.text(posicion, marca, font=fuente, fill=(0,0,0))
+#     archivo.save(f"contenido/{foto}")
 
 # Encriptacion Decriptacion y el Index
 def encrypt(nombre_input: str, nombre_sucio: str) -> None:
@@ -115,7 +115,8 @@ def encrypt(nombre_input: str, nombre_sucio: str) -> None:
         if archivo['nombre'] == nombre_input:
             formato = os.path.splitext(archivo['nombre'])[1]
             if formato != ".mp4":
-                MdA(archivo['nombre'])
+                # MdA(archivo['nombre'])
+                print("je")
             formato = os.path.splitext(archivo['nombre'])[1]
             archivo_encontrado = archivo
             break
@@ -124,6 +125,8 @@ def encrypt(nombre_input: str, nombre_sucio: str) -> None:
     if not archivo_encontrado:
         raise FileNotFoundError(f"El archivo {nombre_input} no se encuentra en licencias.json")
 
+
+    print("PRE generar IV y K")
     # Obtener el IV o generarlo si no existe o es inválido
     iv = archivo_encontrado.get('iv', "")
     k = archivo_encontrado.get('k', "")
@@ -136,10 +139,15 @@ def encrypt(nombre_input: str, nombre_sucio: str) -> None:
         k = os.urandom(16)
     else:
         k = int_to_byts(k, 16)  # Convertir a bytes si ya es válido
+    
+    print("POST generar IV y K")
     # Si el archivo original ya está encriptado, no tiene sentido volver a encriptarlo
     if archivo_encontrado.get('encriptado', False):
         log(f"El archivo {archivo_encontrado['nombre']} ya está encriptado.")
+
         return
+
+    print("El archivo no esta encriptado")
 
     # Cifrar el contenido del archivo original
     aesCipher_CTR = Cipher(algorithms.AES(k), modes.CTR(iv))
@@ -150,9 +158,11 @@ def encrypt(nombre_input: str, nombre_sucio: str) -> None:
     with open(ruta_original, 'rb') as archivo_limpio:
         contenido = archivo_limpio.read()
 
+    print("Encriptamos el archivo")
     # Encriptar
     contenido_encriptado = aesEncryptor_CTR.update(contenido) + aesEncryptor_CTR.finalize()
 
+    print("Guardamos el archivo")
     # Guardar el contenido cifrado con el nuevo nombre
     ruta_encriptada = os.path.join("contenido", nombre_sucio)
     with open(ruta_encriptada, 'wb') as archivo_encriptado:
@@ -385,7 +395,10 @@ def sacarIV(sock: socket,mensaje_rx: str)->None:
     k_rsa_encrypt = pow(byts_to_int(k_rsa),k_pub[1],k_pub[0]) # Encriptado la clave k_rsa que vamos a enviar
 
     for archivo in datos_json.get('archivos', []):
+        print(f"MSJ 0 {msj[0]}")
+        print(f"Archivo[nombre] {archivo['nombre'] }")
         if archivo['nombre'] == msj[0]:
+            print(f"EN EL IF {archivo['nombre'] }")
             k = archivo.get("k")
             clave_c = archivo.get("iv")
             print(clave_c)
