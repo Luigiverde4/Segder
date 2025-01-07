@@ -75,26 +75,26 @@ def int_to_byts(i, length)->bytes:
     """
     return i.to_bytes(length, byteorder="big")
 
-# def MdA(foto):
-#     """
-#     Añade una marca de agua a una fotografia
-#     Args: foto, la ruta de acceso al archivo que se va a modificar
-#     """      
+def MdA(foto):
+    """
+    Añade una marca de agua a una fotografia
+    Args: foto, la ruta de acceso al archivo que se va a modificar
+    """      
 
-#     archivo = Image.open(f"contenido/{foto}")
-#     editada = ImageDraw.Draw(archivo)
-    
-#     #Parametros de la marca de agua
-#     marca = "RJRC"
-#     fuente = ImageFont.truetype('arial.ttf', 25)
-#     ancho, alto = archivo.size
-    
-#     bbox = editada.textbbox((0,0), marca, font = fuente)
-#     texto_ancho, texto_alto = bbox[2] - bbox[0], bbox[3] - bbox[1]
-#     posicion = (ancho - texto_ancho - 50, alto - texto_alto - 50)
+    archivo = Image.open(f"contenido/{foto}")
+    editada = ImageDraw.Draw(archivo)
 
-#     editada.text(posicion, marca, font=fuente, fill=(0,0,0))
-#     archivo.save(f"contenido/{foto}")
+    #Parametros de la marca de agua
+    marca = "sexoydrogas"
+    fuente = ImageFont.truetype('arial.ttf', 25)
+    ancho, alto = archivo.size
+
+    bbox = editada.textbbox((0,0), marca, font = fuente)
+    texto_ancho, texto_alto = bbox[2] - bbox[0], bbox[3] - bbox[1]
+    posicion = (ancho - texto_ancho - 50, alto - texto_alto - 50)
+
+    editada.text(posicion, marca, font=fuente, fill=(0,0,0))
+    archivo.save(f"contenido/{foto}")
 
 # Encriptacion Decriptacion y el Index
 def encrypt(nombre_input: str, nombre_sucio: str) -> None:
@@ -114,9 +114,8 @@ def encrypt(nombre_input: str, nombre_sucio: str) -> None:
     for archivo in listado['archivos']:
         if archivo['nombre'] == nombre_input:
             formato = os.path.splitext(archivo['nombre'])[1]
-            if formato != ".mp4":
-                # MdA(archivo['nombre'])
-                print("je")
+            if formato in [".jpeg",".jpg",".png",".bmp"]:
+                MdA(archivo['nombre'])
             formato = os.path.splitext(archivo['nombre'])[1]
             archivo_encontrado = archivo
             break
