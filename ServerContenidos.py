@@ -7,10 +7,9 @@ from threading import Thread, Event
 import select
 import os
 import json
-from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+from PIL import Image, ImageDraw, ImageFont
 
 index_encriptacion = {}
-from cryptography.hazmat.primitives import padding
 
 # Funciones interfaz
 def log(msj: str) -> None:
@@ -59,6 +58,33 @@ def mostrarIndex() -> str:
     return final
 
 
+def MdA(nombre_limpio: str, id: str) -> None:
+    """
+    Añade una marca de agua a una imagen para luego encriptarla,
+    sin modificar el archivo original.
+    
+    Args:
+        nombre_limpio (str): Nombre del archivo sin encriptar al que agregar la marca de agua.
+        id (str): ID del  que pide la imagen
+    """      
+    archivo = Image.open(f"contenido/{nombre_limpio}")
+    editada = ImageDraw.Draw(archivo)
+
+    # Parámetros de la marca de agua
+    marca = id
+    fuente = ImageFont.truetype('arial.ttf', 25)
+    ancho, alto = archivo.size
+
+    bbox = editada.textbbox((0,0), marca, font = fuente)
+    texto_ancho, texto_alto = bbox[2] - bbox[0], bbox[3] - bbox[1]
+    posicion = (ancho - texto_ancho - 50, alto - texto_alto - 50)
+
+    editada.text(posicion, marca, font=fuente, fill=(0,0,0))
+    
+    # Guardar el fichero con la marca de agua
+    archivo.save(f"contenido/MdA_{nombre_limpio}")
+
+
 # Funciones servidor
 def ver(cliente: socket) -> None:
     """Envia al cliente los contenidos disponibles en el servidor.
@@ -76,7 +102,7 @@ def get(cliente: socket, mensaje_rx: str) -> None:
     """Procesa la solicitud de descarga de un archivo.
     Args:
         cliente (socket): Socket del cliente con el que estamos trabajando
-        mensaje_rx (str): Mensaje rec
+        mensaje_rx (str): Mensaje recibido del cliente
     Returns:
         None
     """
@@ -88,19 +114,37 @@ def get(cliente: socket, mensaje_rx: str) -> None:
         cliente.send("400 Archivo no encontrado\n".encode())
         return
 
-    with open(ruta, 'rb') as archivo:
-        # Cargar el contenido y peso
-        contenido = archivo.read()
-        longitud = os.stat(ruta).st_size
+    try:
+        # Verificar si el archivo está encriptado
+        if index_encriptacion.get(nombre, False):
+            log(f"El archivo {nombre} ya está encriptado. No se aplica marca de agua.")
+            archivo_enviar = ruta  # Archivo original
+        else:
+            # Añadir marca de agua a una copia del archivo
+            ruta_mda = f"contenido/MdA_{nombre}"
+            MdA(nombre, str(clientes[cliente][1]))  # Usar el identificador asociado al cliente.
+            archivo_enviar = ruta_mda  # Usar el archivo con marca de agua
 
-        # Aviso de longitud
-        codigo = "200"
-        msg = f"{codigo} Longitud Contenido:{longitud}\n"
-        
-        # Mandar el archivo
-        cliente.send(msg.encode())
+        # Cargar el contenido del archivo a enviar
+        with open(archivo_enviar, 'rb') as archivo:
+            contenido = archivo.read()
+
+        # Obtener la longitud del archivo
+        longitud = os.stat(archivo_enviar).st_size
+
+        # Enviar respuesta de longitud y el contenido del archivo
+        cliente.send(f"200 Longitud Contenido:{longitud}\n".encode())
         cliente.sendall(contenido)
-        log(f"Archivo enviado: {nombre} ({longitud/1000} Kb) a {clientes[cliente]}")
+
+        # Si hay archivo con marca de agua, eliminarlo
+        if archivo_enviar != ruta:
+            os.remove(archivo_enviar)
+            log(f"Archivo temporal con marca de agua eliminado: {archivo_enviar}")
+
+        log(f"Archivo enviado: {nombre} ({longitud / 1000} KB) a {clientes[cliente]}")
+    except Exception as e:
+        log(f"Error al procesar la solicitud de {clientes[cliente]}: {str(e)}")
+        cliente.send("500 Error interno del servidor\n".encode())
 
 def exitear():
     """Cerrar el evento del servidor"""
@@ -199,6 +243,7 @@ def serverInterface():
             if consola.startswith("exit"):
                 exitear()
                 break
+
             # Logear datos
             elif consola.startswith("log"):
                 log(" ".join(consola.split()[1:]))

@@ -75,26 +75,32 @@ def int_to_byts(i, length)->bytes:
     """
     return i.to_bytes(length, byteorder="big")
 
-def MdA(foto):
+def MdA(nombre_limpio: str, nombre_sucio: str,marca: str) -> None:
     """
-    Añade una marca de agua a una fotografia
-    Args: foto, la ruta de acceso al archivo que se va a modificar
+    Añade una marca de agua a una imagen para luego encriptarla,
+    sin modificar el archivo original.
+    
+    Args:
+        nombre_limpio (str): Nombre del archivo sin encriptar al que agregar la marca de agua.
+        nombre_sucio (str): Nombre del archivo que se va a encriptar.
+        marca (str): String que se va a usar para marcar la imagen 
     """      
-
-    archivo = Image.open(f"contenido/{foto}")
+    archivo = Image.open(f"contenido/{nombre_limpio}")
     editada = ImageDraw.Draw(archivo)
 
-    #Parametros de la marca de agua
-    marca = "sexoydrogas"
+    # Parámetros de la marca de agua
     fuente = ImageFont.truetype('arial.ttf', 25)
     ancho, alto = archivo.size
 
+    marca = os.urandom(8)
     bbox = editada.textbbox((0,0), marca, font = fuente)
     texto_ancho, texto_alto = bbox[2] - bbox[0], bbox[3] - bbox[1]
     posicion = (ancho - texto_ancho - 50, alto - texto_alto - 50)
 
     editada.text(posicion, marca, font=fuente, fill=(0,0,0))
-    archivo.save(f"contenido/{foto}")
+    
+    # Guardar el fichero con la marca de agua
+    archivo.save(f"contenido/MdA_{nombre_sucio}")
 
 # Encriptacion Decriptacion y el Index
 def encrypt(nombre_input: str, nombre_sucio: str) -> None:
@@ -106,8 +112,7 @@ def encrypt(nombre_input: str, nombre_sucio: str) -> None:
         nombre_sucio (str): Nombre del fichero encriptado.
     """
     # Cargar el contenido de licencias.json
-    with open("licencias.json", 'r') as file:
-        listado = json.load(file)
+    listado = leer_json("licencias.json")
 
     # Buscar el archivo original en el JSON
     archivo_encontrado = None
@@ -115,7 +120,7 @@ def encrypt(nombre_input: str, nombre_sucio: str) -> None:
         if archivo['nombre'] == nombre_input:
             formato = os.path.splitext(archivo['nombre'])[1]
             if formato in [".jpeg",".jpg",".png",".bmp"]:
-                MdA(archivo['nombre'])
+                MdA(archivo['nombre'],nombre_sucio, "mirar_meter_socket")
             formato = os.path.splitext(archivo['nombre'])[1]
             archivo_encontrado = archivo
             break
@@ -125,7 +130,6 @@ def encrypt(nombre_input: str, nombre_sucio: str) -> None:
         raise FileNotFoundError(f"El archivo {nombre_input} no se encuentra en licencias.json")
 
 
-    print("PRE generar IV y K")
     # Obtener el IV o generarlo si no existe o es inválido
     iv = archivo_encontrado.get('iv', "")
     k = archivo_encontrado.get('k', "")
@@ -139,11 +143,9 @@ def encrypt(nombre_input: str, nombre_sucio: str) -> None:
     else:
         k = int_to_byts(k, 16)  # Convertir a bytes si ya es válido
     
-    print("POST generar IV y K")
     # Si el archivo original ya está encriptado, no tiene sentido volver a encriptarlo
     if archivo_encontrado.get('encriptado', False):
         log(f"El archivo {archivo_encontrado['nombre']} ya está encriptado.")
-
         return
 
     print("El archivo no esta encriptado")
@@ -153,9 +155,12 @@ def encrypt(nombre_input: str, nombre_sucio: str) -> None:
     aesEncryptor_CTR = aesCipher_CTR.encryptor()
 
     # Abrir el contenido del archivo sin encriptar
-    ruta_original = os.path.join("contenido", nombre_input)
+    ruta_original = os.path.join("contenido",f"MdA_{nombre_sucio}")
     with open(ruta_original, 'rb') as archivo_limpio:
         contenido = archivo_limpio.read()
+
+    # Borramos el archivo temporal con la marca de agua
+    os.remove(ruta_original)
 
     print("Encriptamos el archivo")
     # Encriptar
