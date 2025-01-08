@@ -10,6 +10,8 @@ import json
 import select
 import os
 
+
+
 def actualizarLicenciasJSON(diContenidos) -> None:
     """
     Actualiza el índice de licencias con el objeto diContenidos,
@@ -85,90 +87,91 @@ def iniciar_log() -> None:
 
 def json_a_txt(ruta_json: str, ruta_txt: str) -> None:
     """
-    Convierte el contenido de un archivo JSON a txt
+    Convierte el contenido de un archivo JSON a un archivo de texto plano (TXT).
 
     Args:
-        ruta_json (str): Ruta del archivo JSON 
-        ruta_txt (str): Ruta del archivo de texto donde se guarda el contenido
+        ruta_json (str): Ruta del archivo JSON.
+        ruta_txt (str): Ruta del archivo de texto donde se guarda el contenido.
     """
+    if os.path.exists(ruta_txt):
+        raise FileExistsError(f"El archivo {ruta_txt} ya existe. No se generara de nuevo.")   
     try:
         with open(ruta_json, 'r') as archivo_json:
             contenido = json.load(archivo_json)
         
         with open(ruta_txt, 'w') as archivo_txt:
             for archivo in contenido.get("archivos", []):
-                archivo_txt.write(f"Nombre: {archivo['nombre']}, Encriptado: {archivo['encriptado']}, IV: {archivo['iv']}, K: {archivo['k']}\n")
+                archivo_txt.write(
+                    f"Nombre: {archivo['nombre']}, "
+                    f"Encriptado: {archivo['encriptado']}, "
+                    f"IV: {archivo['iv']}, "
+                    f"K: {archivo['k']}\n"
+                )
         
-        log(f"Contenido de {ruta_json} convertido a {ruta_txt}")
+        print(f"Contenido de {ruta_json} convertido a {ruta_txt}")
     except Exception as e:
-        log(f"Error al convertir JSON a TXT: {str(e)}")
+        print(f"Error al convertir JSON a TXT: {e}")
         raise
 
 
 def encriptar_txt_cbc(ruta_txt: str, clave: bytes) -> None:
     """
-    Encripta un archivo de texto utilizando AES en modo CBC y sobrescribe el txt og
+    Encripta un archivo de texto utilizando AES en modo CBC y sobrescribe el archivo TXT original
 
     Args:
-        ruta_txt (str): Ruta del archivo de texto original que sera sobrescrito
-        clave (bytes): Clave de 16 bytes 
+        ruta_txt (str): Ruta del archivo de texto que sera encriptado
+        clave (bytes): Clave de 16 bytes para la encriptacion
     """
     try:
         with open(ruta_txt, 'rb') as archivo_txt:
             datos = archivo_txt.read()
+        if len(datos) > 16 and datos[:16].isalnum():
+            raise ValueError(f"El archivo {ruta_txt} ya esta encriptado")
         
         padding = 16 - len(datos) % 16
-        datos_padded = datos + bytes([padding] * padding)       
+        datos_padded = datos + bytes([padding] * padding)
+
         iv = os.urandom(16)
         aesCipher_CBC = Cipher(algorithms.AES(clave), modes.CBC(iv))
-        aesEncryptor = aesCipher_CBC.encryptor()       
-        datos_encriptados = aesEncryptor.update(datos_padded) + aesEncryptor.finalize()        
+        aesEncryptor = aesCipher_CBC.encryptor()
+        datos_encriptados = aesEncryptor.update(datos_padded) + aesEncryptor.finalize()
+
         with open(ruta_txt, 'wb') as archivo_txt:
             archivo_txt.write(iv + datos_encriptados)
         
-        log(f"Archivo {ruta_txt} encriptado")
+        print(f"Archivo {ruta_txt} encriptado")
     except Exception as e:
-        log(f"Error al encriptar y sobrescribir TXT: {str(e)}")
+        print(f"Error al encriptar: {e}")
         raise
+
 
 def desencriptar_txt_a_diccionario(ruta_txt: str, clave: bytes) -> dict:
     """
-    Desencripta un archivo encriptado con AES en modo CBC y convierte su contenido a un diccionario de Python.
+    Desencripta un archivo encriptado con AES en modo CBC y convierte su contenido a un diccionario de Python
 
     Args:
-        ruta_txt (str): Ruta del archivo de texto encriptado.
-        clave (bytes): Clave de 16 bytes utilizada para el cifrado y descifrado.
+        ruta_txt (str): Ruta del archivo de texto encriptado
+        clave (bytes): Clave de 16 bytes utilizada para el cifrado y descifrado
 
     Returns:
-        dict: Diccionario con los datos desencriptados.
+        dict: Diccionario con los datos desencriptados
     """
     try:
-        # Leer el archivo en modo binario
         with open(ruta_txt, 'rb') as archivo_txt:
             datos = archivo_txt.read()
-
-        # Asegúrate de que el archivo tiene al menos 16 bytes (el tamaño del IV)
-        if len(datos) < 16:
-            raise ValueError("El archivo encriptado es demasiado pequeño para ser válido (debe contener al menos 16 bytes para el IV).")
-
-        # Extraer el IV (primeros 16 bytes)
         iv = datos[:16]
         datos_encriptados = datos[16:]
 
-        # Desencriptar los datos
         aesCipher_CBC = Cipher(algorithms.AES(clave), modes.CBC(iv))
         aesDecryptor = aesCipher_CBC.decryptor()
         datos_desencriptados_padded = aesDecryptor.update(datos_encriptados) + aesDecryptor.finalize()
 
-        # Eliminar el padding (añadido durante la encriptación)
         padding = datos_desencriptados_padded[-1]
         datos_desencriptados = datos_desencriptados_padded[:-padding]
-        # Convertir los datos desencriptados a texto, asumiendo que estaban en formato UTF-8
         contenido_desencriptado = datos_desencriptados.decode('utf-8')
 
-        # Parsear el contenido al formato esperado (diccionario)
         archivos = []
-        for linea in contenido_desencriptado.split("\r\n"):
+        for linea in contenido_desencriptado.split("\n"):
             if linea.strip():
                 partes = linea.split(", ")
                 archivo = {}
@@ -177,17 +180,16 @@ def desencriptar_txt_a_diccionario(ruta_txt: str, clave: bytes) -> dict:
                     archivo[clave.strip()] = valor.strip()
                 archivos.append(archivo)
 
-        datos_json = {"archivos": archivos}
-
-        return datos_json
+        return {"archivos": archivos}
 
     except Exception as e:
-        print(f"Se produjo un error al desencriptar el archivo: {e}")
-        return {}
+        print(f"Error al desencriptar el archivo: {e}")
+        raise
 
 def getdiContenido() -> dict:
-    clave=os.urandom(16)
-    json_a_txt("licencias/licencias.json","licencias.txt")
-    encriptar_txt_cbc("licencias.txt",clave)
+    clave=b'(0xS\x8bs\xc9\xdc\x1a\xab\xd5n\x9c\xa3@\xb4'
+    # solo se usan estas funciones cuando se cree un licencias.json
+    #json_a_txt("licencias.json","licencias.txt")
+    #encriptar_txt_cbc("licencias.txt",clave)
     return desencriptar_txt_a_diccionario("licencias.txt",clave)
 
