@@ -103,7 +103,6 @@ def decrypt(nombre_archivo: str):
 
     Args:
         nombre_archivo (str): Nombre del archivo a desencriptar.
-        iv (bytes): Vector de inicialización (IV).
     """
     try:
         # Comprobar si esta encriptado
@@ -130,7 +129,19 @@ def decrypt(nombre_archivo: str):
     except Exception as e:
         print(f"Error al desencriptar el archivo {nombre_archivo}: {e}")
 
-def comprobarEncriptado(nombre_archivo):
+def comprobarEncriptado(nombre_archivo: str) -> bool | None:
+    """
+    Comprueba si el archivo especificado está encriptado mediante comunicación con el servidor.
+
+    Args:
+        nombre_archivo (str): Nombre del archivo a comprobar.
+
+    Returns:
+        bool | None: 
+            - True si el servidor indica que el archivo está encriptado.
+            - False si el servidor indica que el archivo no está encriptado.
+            - None si la respuesta del servidor no es válida o no se puede interpretar.
+    """
     mensaje_rx = f"checkEncriptacion {nombre_archivo}".encode()
     sc.send(mensaje_rx)
 
@@ -200,8 +211,10 @@ def gestionar_comandos()->None:
 
 
 
+# CONECTAR CDM
 scdm, addr = s_cdm.accept()
 print("Conexion con el CDM!") 
+
 # Iniciar la gestion de comandos
 if __name__ == "__main__":
     try:

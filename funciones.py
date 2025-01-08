@@ -1,13 +1,6 @@
 from socket import *
-from datetime import datetime
-from threading import Thread, Event
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
-from cryptography.hazmat.primitives.asymmetric import rsa
-from PIL import Image, ImageDraw, ImageFont
-import hashlib
-
 import json
-import select
 import os
 
 
@@ -48,43 +41,6 @@ def actualizarIndex(diContenidos) -> dict:
     except Exception as e:
         print(f"Error al procesar el índice: {str(e)}")
 
-# Funciones interfaz
-def log(msj: str) -> None:
-    """Guarda un log con el tiempo y el mensaje en un archivo de texto.
-    Args:
-        msj (str): Mensaje a guardar en el log
-    Returns:
-        None
-    """
-    try:
-        with open("logs/log.txt", "a") as log_file:
-            log_entry = f"{datetime.now().strftime('%H:%M:%S')} - {msj}"
-            print(log_entry)
-            log_file.write(f"{log_entry}\n")
-    except FileNotFoundError:
-        print("ERROR: El archivo log.txt no existe y no se puede acceder.")
-        raise 
-
-def iniciar_log() -> None:
-    """Escribe un mensaje de inicio en el log al iniciar el servidor anadiendo una linea en blanco si ya existe el archivo.
-    Args:
-        None
-    Returns:
-        None
-    """
-    try:
-        archivo_existe = os.path.exists("log_Licencias.txt")
-        
-        with open("logs/log_Licencias.txt", "a") as log_file:
-            if archivo_existe:
-                log_file.write("\n")  # Anade una linea en blanco solo si el archivo ya existe
-            log_entry = f"{datetime.now().strftime('%H:%M:%S')} - El servidor ha sido iniciado\n"
-            log_file.write(log_entry + '\n')
-        log(log_entry)
-    except FileNotFoundError as e:
-        log(f"{str(e)}")  # Loguea el error si no se encuentra el archivo
-        raise
-
 def json_a_txt(ruta_json: str, ruta_txt: str) -> None:
     """
     Convierte el contenido de un archivo JSON a un archivo de texto plano (TXT).
@@ -112,7 +68,6 @@ def json_a_txt(ruta_json: str, ruta_txt: str) -> None:
     except Exception as e:
         print(f"Error al convertir JSON a TXT: {e}")
         raise
-
 
 def encriptar_txt_cbc(ruta_txt: str, clave: bytes) -> None:
     """
@@ -143,7 +98,6 @@ def encriptar_txt_cbc(ruta_txt: str, clave: bytes) -> None:
     except Exception as e:
         print(f"Error al encriptar: {e}")
         raise
-
 
 def desencriptar_txt_a_diccionario(ruta_txt: str, clave: bytes) -> dict:
     """

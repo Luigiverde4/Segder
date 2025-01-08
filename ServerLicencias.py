@@ -6,8 +6,6 @@ from PIL import Image, ImageDraw, ImageFont
 from funciones import *
 import hashlib
 import random
-import datetime
-import json
 import select
 import os
 
@@ -23,8 +21,7 @@ def exitear():
     log("Servidor detenido por exitear()")
     stop_event.set()  # Señaliza que el servidor debe detenerse
 
-# Encriptacion y Desencriptacion
-
+# PROCESADO 
 def byts_to_int(b)->int:
     """
     Pasa bytes a int
@@ -39,6 +36,8 @@ def int_to_byts(i, length)->bytes:
     """
     return i.to_bytes(length, byteorder="big")
 
+
+# Marca de Agua
 def generar_posicion_aleatoria(ancho: int, alto: int, margen: int = 25) -> tuple[int, int]:
     """
     Genera una posición aleatoria para la marca de agua dentro de los límites de la imagen.
@@ -60,7 +59,6 @@ def generar_posicion_aleatoria(ancho: int, alto: int, margen: int = 25) -> tuple
     y = random.randint(margen, alto - margen)
     
     return x, y
-
 
 def MdA(nombre_limpio: str, nombre_sucio: str,marca: str) -> None:
     """
@@ -89,7 +87,7 @@ def MdA(nombre_limpio: str, nombre_sucio: str,marca: str) -> None:
     # Guardar el fichero con la marca de agua
     archivo.save(f"contenido/MdA_{nombre_sucio}")
 
-# Encriptacion Decriptacion y el Index
+# Encriptacion Decriptacion
 def encrypt(nombre_input: str, nombre_sucio: str, diContenidos: dict) -> None:
     """
     Encripta un fichero y lo guarda con un nuevo nombre.
@@ -105,8 +103,8 @@ def encrypt(nombre_input: str, nombre_sucio: str, diContenidos: dict) -> None:
         if archivo['Nombre'] == nombre_input:
             formato = os.path.splitext(archivo['Nombre'])[1]
             if formato in [".jpeg",".jpg",".png",".bmp"]:
-                MdA(archivo['nombre'],nombre_sucio, "mirar_meter_socket")
-            formato = os.path.splitext(archivo['nombre'])[1]
+                MdA(archivo['Nombre'],nombre_sucio, "mirar_meter_socket")
+            formato = os.path.splitext(archivo['Nombre'])[1]
             archivo_encontrado = archivo
             break
 
@@ -170,7 +168,6 @@ def encrypt(nombre_input: str, nombre_sucio: str, diContenidos: dict) -> None:
     actualizarLicenciasJSON(diContenidos)
 
     log(f"Archivo {nombre_input} encriptado y guardado como {nombre_sucio}")
-
 
 def decrypt(nombre_input: str, nombre_limpio: str, diContenidos: dict) -> None:
     """
@@ -238,62 +235,13 @@ def decrypt(nombre_input: str, nombre_limpio: str, diContenidos: dict) -> None:
     except Exception as e:
         print(f"Ha ocurrido un error al desencriptar el archivo: {e}")
 
-# Crea el diccionario de las licencias y contenidos
-diContenidos=getdiContenido()
-
-# Ruta a la carpeta 'contenido' donde están guardados los archivos
-ruta_contenido = 'contenido'
-
-# Richichi te he cambiado esta funcion nose si la utilizaras o klk pero creo que deberia estar adaptada
-def verificar_archivos(diContenidos, carpeta) -> None:
-    """Recorre el diccionario y comprueba que exista el archivo y te dice si es encriptable
-    
+# LICENCIAS
+def comprueba_firma(firma: str, publica: str, valor_hash: int) -> None:
+    """Descifra la firma digital del mensaje, asegurando que este es correcto.
     Args:
-        diContenidos (dict): El diccionario que contiene la informacion de los archivos
-        carpeta (str): La ruta de la carpeta donde se encuentran los archivos
-    Returns:
-        None
-    """
-    archivos_en_carpeta = os.listdir(carpeta)
-    
-    # Recorre cada archivo en el diccionario y verifica si existe en la carpeta
-    for archivo_info in diContenidos['archivos']:
-        archivo_nombre = archivo_info['Nombre']
-        encriptable = archivo_info['Encriptado'] == 'True'  # Verificar si es encriptable (basado en si está encriptado)
-        vector = archivo_info.get('IV', '')
-        encriptado = archivo_info['Encriptado']
-        k = archivo_info.get('K', '')
-        
-        # Verifica si el archivo está presente en la carpeta 'contenido'
-        if archivo_nombre in archivos_en_carpeta:
-            print(f"El archivo '{archivo_nombre}' está en la carpeta. Encriptable: {encriptable}. IV: {vector} Encriptado: {encriptado}. K: {k}")
-        else:
-            print(f"El archivo '{archivo_nombre}' no se encuentra en la carpeta.")
-
-
-
-
-#Configuracion de conexión
-dir_IP_server = '127.0.0.1'
-puerto_server = 6001
-dir_socket_server = (dir_IP_server, puerto_server)
-
-#Se crean y configuran los sockets
-s = socket(AF_INET, SOCK_STREAM)
-s.bind(dir_socket_server)
-s.listen()
-inputs = [s]
-clientes = {}
-
-stop_event = Event()
-
-def comprueba_firma(firma, publica, valor_hash):
-    """
-    Descifra la firma digital del mensaje, asegurando que este es correcto
-        Args:
-    firma: La firma digital generada en la aplicacion
-    publica: La clave publica que usaremos para descifrar el hash
-    valor_hash: El valor que calculamos del hash, nos servira para comprobar la veracidad del mensaje
+        firma (str): La firma digital generada en la aplicación
+        publica (str): La clave pública que usaremos para descifrar el hash
+        valor_hash (int): El valor que calculamos del hash, nos servirá para comprobar la veracidad del mensaje
     """
     #Genera los números públicos para el descifrado
     publica = [int(num) for num in publica.strip("[]").split(",")]
@@ -309,11 +257,12 @@ def comprueba_firma(firma, publica, valor_hash):
         log('Firma invalida, mensaje corrupto')
 
 def sacarIV(sock: socket, mensaje_rx: str, diContenidos: dict) -> None:
-    """
-    Itera sobre los archivos y manda su IV.
-
-    sock (Socket): Socket del cliente que estamos tratando
-    mensaje_rx (str): Nombre del archivo a desencriptar
+    """Itera sobre los archivos y manda su IV.
+    
+    Args:
+        sock (socket): Socket del cliente que estamos tratando.
+        mensaje_rx (str): Nombre del archivo a desencriptar.
+        diContenidos (dict): Diccionario con la información de los contenidos.
     """
     # Generamos la clave RSA
     k_rsa = os.urandom(16)  # Generamos las claves que vamos a usar para encriptar en CTR las claves de los contenidos
@@ -351,6 +300,57 @@ def sacarIV(sock: socket, mensaje_rx: str, diContenidos: dict) -> None:
 
                 log(f"El archivo solicitado {msj[0]} sí está cifrado")
 
+# LOGS
+def iniciar_log() -> None:
+    """Escribe un mensaje de inicio en el log al iniciar el servidor anadiendo una linea en blanco si ya existe el archivo.
+    """
+    try:
+        archivo_existe = os.path.exists("log_Licencias.txt")
+        
+        with open("logs/log_Licencias.txt", "a") as log_file:
+            if archivo_existe:
+                log_file.write("\n")  # Anade una linea en blanco solo si el archivo ya existe
+            log_entry = f"{datetime.now().strftime('%H:%M:%S')} - El servidor ha sido iniciado\n"
+            log_file.write(log_entry + '\n')
+        log(log_entry)
+    except FileNotFoundError as e:
+        log(f"{str(e)}")  # Loguea el error si no se encuentra el archivo
+        raise
+
+def log(msj: str) -> None:
+    """Guarda un log con el tiempo y el mensaje en un archivo de texto.
+    Args:
+        msj (str): Mensaje a guardar en el log
+    """
+    try:
+        with open("logs/log_licencias.txt", "a") as log_file:
+            log_entry = f"{datetime.now().strftime('%H:%M:%S')} - {msj}"
+            print(log_entry)
+            log_file.write(f"{log_entry}\n")
+    except FileNotFoundError:
+        print("ERROR: El archivo log.txt no existe y no se puede acceder.")
+        raise 
+
+
+# Crea el diccionario de las licencias y contenidos
+diContenidos=getdiContenido()
+
+# Ruta a la carpeta 'contenido' donde están guardados los archivos
+ruta_contenido = 'contenido'
+
+#Configuracion de conexión
+dir_IP_server = '127.0.0.1'
+puerto_server = 6001
+dir_socket_server = (dir_IP_server, puerto_server)
+
+#Se crean y configuran los sockets
+s = socket(AF_INET, SOCK_STREAM)
+s.bind(dir_socket_server)
+s.listen()
+inputs = [s]
+clientes = {}
+
+stop_event = Event()
 
 
 #Hacemos la función principal del server
@@ -392,7 +392,6 @@ def server():
         log(f"Interrupción de teclado")
 
         exitear()
-
 
 # Interfaz servidor
 def serverInterface():

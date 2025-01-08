@@ -16,7 +16,17 @@ sua.connect(dir_socket_UA)
 
 # PROCESADO 
 
-def int_to_byts(i, length):
+def int_to_byts(i: int, length: int) -> bytes:
+    """
+    Convierte un numero entero en una representación en bytes.
+
+    Args:
+        i (int): El nº entero a convertir.
+        length (int): La longitud de la representación en bytes.
+
+    Returns:
+        bytes: El nº entero convertido a bytes en formato big-endian.
+    """
     return i.to_bytes(length, byteorder="big")
 
 def byts_to_int(b)->int:
@@ -64,9 +74,21 @@ def recibirLicencias(kpr,n) -> None:
     except Exception as e:
         print(f"Ha ocurrido un error al recibir la respuesta del servidor: {e}")
 
-def pedirLicencias(mensaje_tx:str)->None:
+def pedirLicencias(mensaje_tx: str) -> tuple[bytes, bytes]:
     """
-        Gestionar si se descarga y recibir licencias del servidor de licencias
+    Gestiona la solicitud y recepción de licencias del servidor de licencias.
+
+    Envía un mensaje al servidor con el nombre del archivo y la clave pública, 
+    recibe la clave de desencriptado y el vector de inicialización (IV) para 
+    procesar la licencia correspondiente.
+
+    Args:
+        mensaje_tx (str): El mensaje a enviar al servidor, normalmente el nombre del archivo que se está solicitando.
+
+    Returns:
+        tuple[bytes, bytes]: Una tupla que contiene:
+            - iv (bytes): El vector de inicialización (IV) necesario para desencriptar el contenido.
+            - k (bytes): La clave para desencriptar el contenido.
     """
     # Coger el nombre del archivo que hemos pedido para pedir el IV
     archivo = mensaje_tx
@@ -83,12 +105,21 @@ def pedirLicencias(mensaje_tx:str)->None:
     iv,k = recibirLicencias(kpr,k_pub[0])
     return iv,k
 
-def firmado(d,kpub):
+def firmado(d: int, kpub: tuple[int, int]) -> int:
     """
-    Genera un hash a partir del mensaje que vamos a mandar al servidor de licencias con la firma digital
-        Args:
-    mensaje: El mensaje que mandamos, será solamente el niombre del archivo del que solicitamos licencia
-    privada: La clave privada RSA, la cual se usa de base para encriptar el mensaje
+    Genera una firma digital para un mensaje utilizando una clave privada RSA.
+
+    La función crea un hash del mensaje y lo firma utilizando la clave privada (d) 
+    y la clave pública (kpub) para generar la firma digital, que se puede verificar 
+    posteriormente con la clave pública del emisor.
+
+    Args:
+        d (int): La clave privada RSA utilizada para firmar el mensaje.
+        kpub (tuple[int, int]): La clave pública RSA del receptor, 
+                                 donde el primer elemento es el módulo (n) y el segundo es el exponente (e).
+
+    Returns:
+        int: La firma digital generada a partir del hash del mensaje.
     """
     #Generamos el hash con el mensaje de comprobación
     mensaje_bits = b"Firma digital del mensaje"
@@ -99,9 +130,18 @@ def firmado(d,kpub):
     firma = pow(hash_m, d, n) #Usamos pow para sacar la firma
     return firma
 
-def generar_claves():
+def generar_claves() -> tuple[int, list[int]]:
     """
-    Genera una clave pública y una clave privada
+    Genera una clave pública y una clave privada utilizando el algoritmo RSA.
+
+    La función genera una clave privada y su correspondiente clave pública, 
+    y luego extrae los componentes clave necesarios, como el exponente público (e), 
+    el módulo (n) y la clave privada (d), para su uso en procesos de encriptación y firma digital.
+
+    Returns:
+        tuple[int, list[int]]: 
+            - La clave privada (d) como un entero.
+            - Una lista que contiene el módulo (n) y el exponente público (e) de la clave pública.
     """
     kpr = rsa.generate_private_key(65537,2048)
     k_pub = kpr.public_key()
@@ -117,11 +157,18 @@ def generar_claves():
     return d,[n,e]
 
 # CONTENIDO
-def desencriptarContenido(k,iv,nombre_archivo):
+def desencriptarContenido(k: bytes, iv: bytes, nombre_archivo: str) -> None:
     """
-    k: Clave
-    iv: Clave IV
-    nombre_archivo: Nombre del archivo encriptado
+    Desencripta un archivo encriptado utilizando AES en modo CTR.
+
+    Esta función lee un archivo encriptado, lo descifra utilizando la clave (k) 
+    y el vector de inicialización (iv) proporcionados, y luego guarda el archivo 
+    desencriptado en el mismo directorio.
+
+    Args:
+        k (bytes): La clave de encriptación para AES.
+        iv (bytes): El vector de inicialización (IV) utilizado para AES en modo CTR.
+        nombre_archivo (str): El nombre del archivo encriptado que se va a desencriptar.
     """
     # Cargar el archivo encriptado
     with open(f"contenido_descargado/{nombre_archivo}", "rb") as archivo_encriptado:

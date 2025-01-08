@@ -11,16 +11,13 @@ from PIL import Image, ImageDraw, ImageFont
 import random
 
 index_encriptacion = {}
-from cryptography.hazmat.primitives import padding
 
 
 diContenidos=getdiContenido()
+
 def iniciar_log() -> None:
-    """Escribe un mensaje de inicio en el log al iniciar el servidor anadiendo una linea en blanco si ya existe el archivo.
-    Args:
-        None
-    Returns:
-        None
+    """
+    Escribe un mensaje de inicio en el log al iniciar el servidor anadiendo una linea en blanco si ya existe el archivo.
     """
     try:
         archivo_existe = os.path.exists("log.txt")
@@ -35,16 +32,34 @@ def iniciar_log() -> None:
         log(f"{str(e)}")  # Loguea el error si no se encuentra el archivo
         raise
 
+# Funciones interfaz
+def log(msj: str) -> None:
+    """Guarda un log con el tiempo y el mensaje en un archivo de texto.
+    Args:
+        msj (str): Mensaje a guardar en el log
+    Returns:
+        None
+    """
+    try:
+        with open("logs/log.txt", "a") as log_file:
+            log_entry = f"{datetime.now().strftime('%H:%M:%S')} - {msj}"
+            print(log_entry)
+            log_file.write(f"{log_entry}\n")
+    except FileNotFoundError:
+        print("ERROR: El archivo log.txt no existe y no se puede acceder.")
+        raise 
+
 def mostrarIndex() -> str:
     """
     Crea un string con el nombre y si esta encriptado segun el JSON
+    
+    Returns:
+        str: Un string formateado que muestra los nombres de los archivos y su estado de encriptación.
     """
     final = "\nNombre : Encriptado?\n"
     for llave, valor in index_encriptacion.items():
         final += f"{llave} : {valor} \n"
     return final
-
-
 
 def generar_posicion_aleatoria(ancho: int, alto: int, margen: int = 25) -> tuple[int, int]:
     """
@@ -67,7 +82,6 @@ def generar_posicion_aleatoria(ancho: int, alto: int, margen: int = 25) -> tuple
     y = random.randint(margen, alto - margen)
     
     return x, y
-
 
 def MdA(nombre_limpio: str, id: str) -> None:
     """
@@ -102,8 +116,6 @@ def ver(cliente: socket) -> None:
     """Envia al cliente los contenidos disponibles en el servidor.
     Args:
         cliente (socket): Socket del cliente con el que estamos trabajando
-    Returns:
-        None
     """    
     archivos = os.listdir("contenido")
     archivos_str = "\n".join(archivos) if archivos else "No hay contenido\n"
@@ -115,8 +127,6 @@ def get(cliente: socket, mensaje_rx: str) -> None:
     Args:
         cliente (socket): Socket del cliente con el que estamos trabajando
         mensaje_rx (str): Mensaje recibido del cliente
-    Returns:
-        None
     """
     nombre = mensaje_rx.split()[1]
     ruta = f"contenido/{nombre}"
@@ -128,7 +138,8 @@ def get(cliente: socket, mensaje_rx: str) -> None:
 
     try:
         # Verificar si el archivo está encriptado
-        if index_encriptacion.get(nombre, False):
+        print(checkEncriptacion(nombre, diContenidos).decode())
+        if checkEncriptacion(nombre, diContenidos).decode():
             log(f"El archivo {nombre} ya está encriptado. No se aplica marca de agua.")
             archivo_enviar = ruta  # Archivo original
         else:
@@ -163,7 +174,18 @@ def exitear():
     log("Servidor detenido por exitear()")
     stop_event.set()  # Señaliza que el servidor debe detenerse
 
-def checkEncriptacion(nombre_input: str, diContenidos: dict):
+def checkEncriptacion(nombre_input: str, diContenidos: dict) -> bytes:
+    """
+    Verifica si un archivo está encriptado
+
+    Args:
+        nombre_input (str): El nombre del archivo que se quiere verificar.
+        diContenidos (dict): El diccionario que contiene los datos de los archivos, incluyendo el nombre y el estado de encriptación.
+
+    Returns:
+            bytes: "True" si el archivo está encriptado, "False" si no lo está, ambos en formato `bytes`.
+
+    """
     # Buscar el archivo original en el diccionario
     archivo_encontrado = None
     for archivo in diContenidos['archivos']:
