@@ -51,15 +51,18 @@ def log(msj: str) -> None:
 
 def mostrarIndex() -> str:
     """
-    Crea un string con el nombre y si esta encriptado segun el JSON
-    
+    Crea un string con el nombre y si está encriptado según el JSON utilizando la función checkEncriptacion.
+
     Returns:
         str: Un string formateado que muestra los nombres de los archivos y su estado de encriptación.
     """
     final = "\nNombre : Encriptado?\n"
-    for llave, valor in index_encriptacion.items():
-        final += f"{llave} : {valor} \n"
+    for archivo in diContenidos['archivos']:
+        nombre_archivo = archivo['Nombre']
+        encriptado = checkEncriptacion(nombre_archivo, diContenidos).decode()
+        final += f"{nombre_archivo} : {encriptado} \n"
     return final
+
 
 def generar_posicion_aleatoria(ancho: int, alto: int, margen: int = 25) -> tuple[int, int]:
     """
