@@ -295,7 +295,7 @@ def sacarIV(sock: socket, mensaje_rx: str, diContenidos: dict) -> None:
     k_pub = msj[1]  # Recibimos la clave pública como string
     k_pub = [int(num) for num in k_pub.strip("[]").split(",")]  # Pasamos de string a lista con los elementos [n, e]
     k_rsa_encrypt = pow(byts_to_int(k_rsa), k_pub[1], k_pub[0])  # Encriptado la clave k_rsa que vamos a enviar
-    
+    print("hemos llegao aqui")
     for archivo in diContenidos.get('archivos', []):
         print(f"MSJ 0 {msj[0]}")
         print(f"Archivo[nombre] {archivo['Nombre']}")
@@ -312,6 +312,7 @@ def sacarIV(sock: socket, mensaje_rx: str, diContenidos: dict) -> None:
             else:
                 aesCipherCTR = Cipher(algorithms.AES(k_rsa), modes.CTR(IV_rsa))
                 aesEncryptorCTR = aesCipherCTR.encryptor()
+                k = int(k)
                 k_encrypt = aesEncryptorCTR.update(int_to_byts(k, 16))
                 print("pasamos")
                 mensaje_iv = f"Vector: {clave_c} Clave: {byts_to_int(k_encrypt)} K_RSA: {k_rsa_encrypt} IV_RSA: {byts_to_int(IV_rsa)}"
@@ -339,7 +340,7 @@ def server():
                             mensaje, publica, firma = mensaje_rx.split("-")
                             log(f"Archivo pedido  {clientes[sock]}: {mensaje}")
                             comprueba_firma(firma, publica, valor_hash)
-                            sacarIV(sock,mensaje_rx)
+                            sacarIV(sock,mensaje_rx,diContenidos)
 
                         else:
                             log(f"Cliente {clientes[sock]} desconectado")

@@ -13,6 +13,7 @@ index_encriptacion = {}
 from cryptography.hazmat.primitives import padding
 
 
+diContenidos=getdiContenido()
 def iniciar_log() -> None:
     """Escribe un mensaje de inicio en el log al iniciar el servidor anadiendo una linea en blanco si ya existe el archivo.
     Args:
@@ -198,7 +199,7 @@ def server():
 
                     elif mensaje_rx.startswith("checkEncriptacion"):
                         archivo = mensaje_rx.split(" ")[1]
-                        estaEncriptado = checkEncriptacion(archivo)
+                        estaEncriptado = checkEncriptacion(archivo, diContenidos)
                         sock.send(estaEncriptado)
                 else:
                     # Si no hay mensaje, el cliente cerro la conexion
