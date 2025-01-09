@@ -141,12 +141,13 @@ def get(cliente: socket, mensaje_rx: str) -> None:
 
     try:
         # Verificar si el archivo está encriptado
-        print(checkEncriptacion(nombre, diContenidos).decode())
-        if checkEncriptacion(nombre, diContenidos).decode():
+        # print(checkEncriptacion(nombre, diContenidos).decode())
+        if checkEncriptacion(nombre, diContenidos).decode() == "True":
             log(f"El archivo {nombre} ya está encriptado. No se aplica marca de agua.")
             archivo_enviar = ruta  # Archivo original
         else:
             # Añadir marca de agua a una copia del archivo
+            print("!!!!!!!!!!!!!s")
             ruta_mda = f"contenido/MdA_{nombre}"
             MdA(nombre, str(clientes[cliente][1]))  # Usar el identificador asociado al cliente.
             archivo_enviar = ruta_mda  # Usar el archivo con marca de agua
