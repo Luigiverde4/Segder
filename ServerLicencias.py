@@ -269,21 +269,16 @@ def sacarIV(sock: socket, mensaje_rx: str, diContenidos: dict) -> None:
     IV_rsa = os.urandom(16)
 
     msj = mensaje_rx.split("-")
-    print(msj)
 
     # Encriptamos la clave RSA
     k_pub = msj[1]  # Recibimos la clave pública como string
     k_pub = [int(num) for num in k_pub.strip("[]").split(",")]  # Pasamos de string a lista con los elementos [n, e]
     k_rsa_encrypt = pow(byts_to_int(k_rsa), k_pub[1], k_pub[0])  # Encriptado la clave k_rsa que vamos a enviar
-    print("hemos llegao aqui")
     for archivo in diContenidos.get('archivos', []):
-        print(f"MSJ 0 {msj[0]}")
         print(f"Archivo[nombre] {archivo['Nombre']}")
         if archivo['Nombre'] == msj[0]:
-            print(f"EN EL IF {archivo['Nombre']}")
             k = archivo.get("K")
             clave_c = archivo.get("IV")
-            print(clave_c)
             # clave_c es un string
             print("Clave_c: ", clave_c)
             if not k:
@@ -294,7 +289,6 @@ def sacarIV(sock: socket, mensaje_rx: str, diContenidos: dict) -> None:
                 aesEncryptorCTR = aesCipherCTR.encryptor()
                 k = int(k)
                 k_encrypt = aesEncryptorCTR.update(int_to_byts(k, 16))
-                print("pasamos")
                 mensaje_iv = f"Vector: {clave_c} Clave: {byts_to_int(k_encrypt)} K_RSA: {k_rsa_encrypt} IV_RSA: {byts_to_int(IV_rsa)}"
                 sock.send(str(mensaje_iv).encode())
 
