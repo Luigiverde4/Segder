@@ -60,7 +60,7 @@ def generar_posicion_aleatoria(ancho: int, alto: int, margen: int = 25) -> tuple
     
     return x, y
 
-def MdA(nombre_limpio: str, nombre_sucio: str,marca: str) -> None:
+def MdA(nombre_limpio: str, nombre_sucio: str) -> None:
     """
     Añade una marca de agua a una imagen para luego encriptarla,
     sin modificar el archivo original.
@@ -68,7 +68,7 @@ def MdA(nombre_limpio: str, nombre_sucio: str,marca: str) -> None:
     Args:
         nombre_limpio (str): Nombre del archivo sin encriptar al que agregar la marca de agua.
         nombre_sucio (str): Nombre del archivo que se va a encriptar.
-        marca (str): String que se va a usar para marcar la imagen 
+        
     """      
     archivo = Image.open(f"contenido/{nombre_limpio}")
     editada = ImageDraw.Draw(archivo)
@@ -103,7 +103,7 @@ def encrypt(nombre_input: str, nombre_sucio: str, diContenidos: dict) -> None:
         if archivo['Nombre'] == nombre_input:
             formato = os.path.splitext(archivo['Nombre'])[1]
             if formato in [".jpeg",".jpg",".png",".bmp"]:
-                MdA(archivo['Nombre'],nombre_sucio, "mirar_meter_socket")
+                MdA(archivo['Nombre'],nombre_sucio)
             formato = os.path.splitext(archivo['Nombre'])[1]
             archivo_encontrado = archivo
             break

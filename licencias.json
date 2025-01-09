@@ -1,8 +1,14 @@
 {
     "archivos": [
         {
-            "nombre": "a.bmp",
+            "nombre": "segder.bmp",
             "encriptado": false,
+            "iv": "",
+            "k": ""
+        },
+        {
+            "nombre": "b.bmp",
+            "encriptado": true,
             "iv": "",
             "k": ""
         }
